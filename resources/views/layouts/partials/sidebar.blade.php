@@ -1,6 +1,6 @@
 <aside class="main-sidebar sidebar-dark-primary elevation-4" style="background: linear-gradient(180deg, #4e73df 0%, #224abe 100%); transition: all 0.3s ease;">
     <!-- Brand Logo -->
-    <a href="{{ route('admin.dashboard') }}" 
+    <a href="{{ auth()->user()->role == 'guru' ? route('guru.dashboard') : route('admin.dashboard') }}" 
     class="brand-link text-white d-flex align-items-center" 
     style="transition: all 0.3s ease;">
         <img src="{{ asset('adminlte/img/logo-sekolah.jpg') }}" 
@@ -24,58 +24,91 @@
                         : asset('adminlte/img/admin.png') }}" 
                 class="img-circle elevation-2" 
                 alt="User Image" 
-                style="height:70px; width50px; object-fit:cover;">
+                style="height:70px; width:50px; object-fit:cover;">
         </div>
 
             <div class="info ms-2">
-                <a href="{{ route('admin.profile') }}" class="d-block text-white fw-bold">{{ auth()->user()->name }}</a>
+                <a href="{{ auth()->user()->role == 'guru' ? route('guru.profile') : route('admin.profile') }}" class="d-block text-white fw-bold">{{ auth()->user()->name }}</a>
             </div>
         </div>
 
         <nav>
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
-                <li class="nav-item">
-                    <a href="{{ route('admin.dashboard') }}" class="nav-link text-white {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
-                        <i class="nav-icon fas fa-tachometer-alt fa-lg"></i>
-                        <p>Dashboard</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.siswa.index') }}" class="nav-link text-white {{ request()->routeIs('admin.siswa.*') ? 'active' : '' }}">
-                        <i class="nav-icon fas fa-user-graduate fa-lg"></i>
-                        <p>Kelola Siswa</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.guru.index') }}" class="nav-link text-white {{ request()->routeIs('admin.guru.*') ? 'active' : '' }}">
-                        <i class="nav-icon fas fa-chalkboard-teacher fa-lg"></i>
-                        <p>Kelola Guru</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.kelas.index') }}" class="nav-link text-white {{ request()->routeIs('admin.kelas.*') ? 'active' : '' }}">
-                        <i class="nav-icon fas fa-school fa-lg"></i>
-                        <p>Kelola Kelas</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.jadwal.index') }}" class="nav-link text-white {{ request()->routeIs('admin.jadwal.*') ? 'active' : '' }}">
-                        <i class="nav-icon fas fa-calendar-alt fa-lg"></i>
-                        <p>Kelola Jadwal</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.absensi.index') }}" class="nav-link text-white {{ request()->routeIs('admin.absensi.*') ? 'active' : '' }}">
-                        <i class="nav-icon fas fa-clipboard-list fa-lg"></i>
-                        <p>Kelola Absensi</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.pembayaran.index') }}" class="nav-link text-white {{ request()->routeIs('admin.pembayaran.*') ? 'active' : '' }}">
-                        <i class="nav-icon fas fa-money-bill-wave fa-lg"></i>
-                        <p>Kelola Pembayaran</p>
-                    </a>
-                </li>
+                @if(auth()->user()->role == 'admin')
+                    <li class="nav-item">
+                        <a href="{{ route('admin.dashboard') }}" class="nav-link text-white {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-tachometer-alt fa-lg"></i>
+                            <p>Dashboard</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('admin.siswa.index') }}" class="nav-link text-white {{ request()->routeIs('admin.siswa.*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-user-graduate fa-lg"></i>
+                            <p>Kelola Siswa</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('admin.guru.index') }}" class="nav-link text-white {{ request()->routeIs('admin.guru.*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-chalkboard-teacher fa-lg"></i>
+                            <p>Kelola Guru</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('admin.kelas.index') }}" class="nav-link text-white {{ request()->routeIs('admin.kelas.*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-school fa-lg"></i>
+                            <p>Kelola Kelas</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('admin.jadwal.index') }}" class="nav-link text-white {{ request()->routeIs('admin.jadwal.*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-calendar-alt fa-lg"></i>
+                            <p>Kelola Jadwal</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('admin.absensi.index') }}" class="nav-link text-white {{ request()->routeIs('admin.absensi.*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-clipboard-list fa-lg"></i>
+                            <p>Kelola Absensi</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('admin.pembayaran.index') }}" class="nav-link text-white {{ request()->routeIs('admin.pembayaran.*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-money-bill-wave fa-lg"></i>
+                            <p>Kelola Pembayaran</p>
+                        </a>
+                    </li>
+                @elseif(auth()->user()->role == 'guru')
+                    <li class="nav-item">
+                        <a href="{{ route('guru.dashboard') }}" class="nav-link text-white {{ request()->routeIs('guru.dashboard') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-tachometer-alt fa-lg"></i>
+                            <p>Dashboard</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link text-white {{ request()->routeIs('guru.absensi.*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-clipboard-list fa-lg"></i>
+                            <p>Absensi Siswa</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link text-white {{ request()->routeIs('guru.jadwal.*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-calendar-alt fa-lg"></i>
+                            <p>Jadwal Mengajar</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link text-white {{ request()->routeIs('guru.kelas.*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-school fa-lg"></i>
+                            <p>Kelas Diampu</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link text-white {{ request()->routeIs('guru.kelas.*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-user-graduate fa-lg"></i>
+                            <p>Penilaian Siswa</p>
+                        </a>
+                    </li>
+                @endif
             </ul>
         </nav>
     </div>
@@ -125,5 +158,11 @@
     color: #fff;
 }
 
-</style>
+/* Guru sidebar color accent */
+@if(auth()->user()->role == 'guru')
+    .main-sidebar {
+        background: linear-gradient(180deg, #1cc88a 0%, #198754 100%) !important;
+    }
+@endif
 
+</style>

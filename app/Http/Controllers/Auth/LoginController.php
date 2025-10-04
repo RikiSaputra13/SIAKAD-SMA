@@ -35,7 +35,9 @@ class LoginController extends Controller
                 return redirect()->route('admin.dashboard');
             } elseif ($user->role === 'siswa') {
                 return redirect()->route('siswa.dashboard');
-            }
+            }elseif ($user->role === 'guru') {
+                return redirect()->route('guru.dashboard');
+            }   
 
             // Logout jika role tidak valid
             Auth::logout();
