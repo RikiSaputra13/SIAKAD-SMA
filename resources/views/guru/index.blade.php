@@ -1,3 +1,0 @@
-{{-- SALAH VIEW GURU --}}
-
-<!-- okeeee -->

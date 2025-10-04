@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\TokenController;
 use App\Http\Controllers\Admin\PembayaranController;
 use App\Http\Controllers\Siswa\SiswaController;
 use App\Http\Controllers\Siswa\AbsensiController as SiswaAbsensiController;
+use App\Http\Controllers\Guru\DashboardGuruController;
 
 /*
 |--------------------------------------------------------------------------
@@ -100,4 +101,23 @@ Route::prefix('siswa')->name('siswa.')->middleware('role:siswa')->group(function
     // Ubah Password
     Route::get('/ubah-password', [SiswaController::class, 'showChangePasswordForm'])->name('ubah-password.form');
     Route::post('/ubah-password', [SiswaController::class, 'changePassword'])->name('ubah-password');
+});
+
+/*
+|--------------------------------------------------------------------------
+| GURU AREA
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('guru')->name('guru.')->middleware('role:guru')->group(function () {
+    // Dashboard & Profil
+    Route::get('/dashboard', [DashboardGuruController::class, 'index'])->name('dashboard');
+    Route::get('/profile', [DashboardGuruController::class, 'profile'])->name('profile');
+
+    // CRUD Absensi (tanpa create & edit)
+    //Route::resource('absensi', App\Http\Controllers\Guru\AbsensiController::class)->except(['create', 'edit', 'show']);
+
+    // Ubah Password
+    //Route::get('/ubah-password', [App\Http\Controllers\Guru\GuruController::class, 'showChangePasswordForm'])->name('ubah-password.form');
+    //Route::post('/ubah-password', [App\Http\Controllers\Guru\GuruController::class, 'changePassword'])->name('ubah-password');
 });

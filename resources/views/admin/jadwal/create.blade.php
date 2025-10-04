@@ -51,13 +51,19 @@
                         </select>
                     </div>
 
-                    {{-- Mata Pelajaran --}}
+                    {{-- MATA PELAJARAN --}}
                     <div class="col-md-6">
                         <label for="mata_pelajaran" class="form-label">Mata Pelajaran</label>
-                        <input type="text" name="mata_pelajaran" id="mata_pelajaran" 
-                               class="form-control" value="{{ old('mata_pelajaran') }}" required>
+                        <select name="mata_pelajaran" id="mata_pelajaran" class="form-control" required>
+                            <option value="">-- Pilih Mata Pelajaran --</option>
+                            @foreach($guru as $item)
+                                <option value="{{ $item->id }}" {{ old('mata_pelajaran') == $item->id ? 'selected' : '' }}>
+                                    {{ $item->mapel }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
-
+                    
                     {{-- Hari --}}
                     <div class="col-md-6">
                         <label for="hari" class="form-label">Hari</label>
