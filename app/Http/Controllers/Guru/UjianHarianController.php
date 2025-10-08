@@ -9,134 +9,87 @@ use App\Models\TipeUjian;
 use App\Models\Jadwal;
 use App\Models\Kelas;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class UjianHarianController extends Controller
 {
-    /**
-     * Display a listing of ujian harian.
-     */
     public function index(Request $request)
-    {
-        $guruId = auth()->user()->gurus;
-        // Ambil tipe ujian harian
-        $tipeUjianHarian = TipeUjian::where('kode', 'uh')->first();
-        
-        if (!$tipeUjianHarian) {
-            return redirect()->back()->with('error', 'Tipe ujian harian tidak ditemukan!');
-        }
+{
+    Log::info('=== Memasuki method GuruPenilaianController@index ===');
 
-        // Query ujian harian
-        $query = Ujian::with(['kelas', 'tipeUjian'])
-                     ->where('guru_id', $guruId)
-                     ->where('tipe_ujian_id', $tipeUjianHarian->id);
+    // Ambil data guru dari user yang sedang login
+    $user = auth()->user();
+    Log::info('User login:', ['id' => $user->id, 'role' => $user->role]);
 
-        // Filter berdasarkan kelas
-        if ($request->has('kelas_id') && $request->kelas_id != '') {
-            $query->where('kelas_id', $request->kelas_id);
-        }
+    $guru = $user->guru;
 
-        // Filter berdasarkan status
-        if ($request->has('status') && $request->status != '') {
-            $query->where('status', $request->status);
-        }
-
-        $ujian = $query->orderBy('created_at', 'desc')->get();
-
-        // Ambil kelas yang diajar oleh guru ini
-        $kelasOptions = Jadwal::where('guru_id', $guruId)
-                            ->with('kelas')
-                            ->get()
-                            ->pluck('kelas.nama_kelas', 'kelas.id')
-                            ->unique();
-
-        // Statistik
-        $statistik = [
-            'total' => $ujian->count(),
-            'draft' => $ujian->where('status', 'draft')->count(),
-            'published' => $ujian->where('status', 'published')->count(),
-            'completed' => $ujian->where('status', 'completed')->count(),
-        ];
-
-        return view('guru.penilaian.uh-index', compact(
-            'ujian', 
-            'kelasOptions', 
-            'statistik'
-        ));
+    // Jika user login tidak terhubung dengan data guru
+    if (!$guru) {
+        Log::warning('User tidak memiliki data guru yang terkait.', ['user_id' => $user->id]);
+        return redirect()->back()->with('error', 'Data guru tidak ditemukan untuk akun ini!');
     }
 
-//    public function index(Request $request)
-// {
-//     $user = auth()->user()->guru;
-    
-//     // // Pastikan user adalah guru
-//     // if (!$user->guru) {
-//     //     return redirect()->route('dashboard')
-//     //                      ->with('error', 'Anda tidak memiliki akses ke halaman ini.');
-//     // }
-    
-//     // CARI GURU BERDASARKAN USER ID - Approach yang lebih aman
-//     $guru = \App\Models\Guru::where('user_id', $user->id)->first();
-    
-//     if (!$guru) {
-//         // Debug informasi
-//         logger()->error('Guru not found for user', [
-//             'user_id' => $user->id,
-//             'user_name' => $user->name,
-//             'user_role' => $user->role
-//         ]);
-        
-//         return redirect()->route('guru.dashboard')
-//                          ->with('error', 'Data guru tidak ditemukan untuk akun Anda. Silakan hubungi administrator.');
-//     }
-    
-//     $guruId = $guru->id;
-    
-//     // Ambil tipe ujian harian
-//     $tipeUjianHarian = TipeUjian::where('kode', 'uh')->first();
-    
-//     if (!$tipeUjianHarian) {
-//         return redirect()->back()->with('error', 'Tipe ujian harian tidak ditemukan!');
-//     }
+    $guruId = $guru->id;
+    Log::info('Guru ditemukan:', ['guru_id' => $guruId, 'nama' => $guru->nama]);
 
-//     // Query ujian harian
-//     $query = Ujian::with(['kelas', 'tipeUjian'])
-//                  ->where('guru_id', $guruId)
-//                  ->where('tipe_ujian_id', $tipeUjianHarian->id);
+    // Ambil tipe ujian harian
+    $tipeUjianHarian = TipeUjian::where('kode', 'uh')->first();
+    if (!$tipeUjianHarian) {
+        Log::error('Tipe ujian harian (kode: uh) tidak ditemukan di database.');
+        return redirect()->back()->with('error', 'Tipe ujian harian tidak ditemukan!');
+    }
+    Log::info('Tipe ujian harian ditemukan:', ['id' => $tipeUjianHarian->id]);
 
-//     // Filter berdasarkan kelas
-//     if ($request->has('kelas_id') && $request->kelas_id != '') {
-//         $query->where('kelas_id', $request->kelas_id);
-//     }
+    // Query ujian harian berdasarkan guru login dan tipe ujian
+    $query = Ujian::with(['kelas', 'tipeUjian'])
+                  ->where('guru_id', $guruId)
+                  ->where('tipe_ujian_id', $tipeUjianHarian->id);
 
-//     // Filter berdasarkan status
-//     if ($request->has('status') && $request->status != '') {
-//         $query->where('status', $request->status);
-//     }
+    // Filter berdasarkan kelas
+    if ($request->filled('kelas_id')) {
+        $query->where('kelas_id', $request->kelas_id);
+        Log::info('Filter kelas diterapkan:', ['kelas_id' => $request->kelas_id]);
+    }
 
-//     $ujian = $query->orderBy('created_at', 'desc')->get();
+    // Filter berdasarkan status
+    if ($request->filled('status')) {
+        $query->where('status', $request->status);
+        Log::info('Filter status diterapkan:', ['status' => $request->status]);
+    }
 
-//     // Ambil kelas yang diajar oleh guru ini
-//     $kelasOptions = Jadwal::where('guru_id', $guruId)
-//                         ->with('kelas')
-//                         ->get()
-//                         ->pluck('kelas.nama_kelas', 'kelas.id')
-//                         ->unique();
+    // Ambil data ujian
+    $ujian = $query->orderBy('created_at', 'desc')->get();
+    Log::info('Jumlah ujian ditemukan:', ['total' => $ujian->count()]);
 
-//     // Statistik
-//     $statistik = [
-//         'total' => $ujian->count(),
-//         'draft' => $ujian->where('status', 'draft')->count(),
-//         'published' => $ujian->where('status', 'published')->count(),
-//         'completed' => $ujian->where('status', 'completed')->count(),
-//     ];
+    // Ambil daftar kelas yang diajar guru ini
+    $kelasOptions = Jadwal::where('guru_id', $guruId)
+                        ->with('kelas')
+                        ->get()
+                        ->pluck('kelas.nama_kelas', 'kelas.id')
+                        ->unique();
 
-//     return view('guru.penilaian.uh-index', compact(
-//         'ujian', 
-//         'kelasOptions', 
-//         'statistik'
-//     ));
-// }
+    Log::info('Jumlah kelas ditemukan untuk guru:', ['total_kelas' => $kelasOptions->count()]);
+
+    // Hitung statistik ujian
+    $statistik = [
+        'total'      => $ujian->count(),
+        'draft'      => $ujian->where('status', 'draft')->count(),
+        'published'  => $ujian->where('status', 'published')->count(),
+        'completed'  => $ujian->where('status', 'completed')->count(),
+    ];
+
+    Log::info('Statistik ujian:', $statistik);
+
+    // Tampilkan ke view
+    Log::info('Render view: guru.penilaian.uh-index');
+    return view('guru.penilaian.uh-index', compact(
+        'ujian',
+        'kelasOptions',
+        'statistik'
+    ));
+}
+
     /**
      * Show the form for creating a new ujian harian.
      */
