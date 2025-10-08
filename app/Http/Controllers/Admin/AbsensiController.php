@@ -24,6 +24,7 @@ class AbsensiController extends Controller
         return view('admin.absensi.index', compact('absensis', 'kelas'));
     }
 
+
     public function create()
     {
         $siswas = Siswa::all();

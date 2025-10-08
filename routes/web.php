@@ -114,6 +114,42 @@ Route::prefix('guru')->name('guru.')->middleware('role:guru')->group(function ()
     Route::get('/dashboard', [DashboardGuruController::class, 'index'])->name('dashboard');
     Route::get('/profile', [DashboardGuruController::class, 'profile'])->name('profile');
 
+    // Daftar Siswa (baca saja)
+    Route::get('/siswa', [App\Http\Controllers\Guru\GuruSiswaController::class, 'index'])->name('siswa.index');
+
+    // Absensi Siswa (baca saja)
+    Route::get('/siswa/absensi', [App\Http\Controllers\Guru\GuruSiswaController::class, 'absensiSiswa'])->name('siswa.absensi');
+
+    // Jadwal Mengajar Guru
+    Route::get('/jadwal', [DashboardGuruController::class, 'jadwalGuru'])->name('jadwal.index');
+
+    // Penilaian
+    //Route::get('/penilaian', [App\Http\Controllers\Guru\PenilaianController::class, 'index'])->name('penilaian.index');
+    Route::get('/penilaian/list', [App\Http\Controllers\Guru\PenilaianController::class, 'index'])->name('penilaian.list');
+    Route::get('/penilaian/create', [App\Http\Controllers\Guru\PenilaianController::class, 'create'])->name('penilaian.create');
+    Route::post('/penilaian', [App\Http\Controllers\Guru\PenilaianController::class, 'store'])->name('penilaian.store');
+    Route::get('/penilaian/{penilaian}/edit', [App\Http\Controllers\Guru\PenilaianController::class, 'edit'])->name('penilaian.edit');
+    Route::put('/penilaian/{penilaian}', [App\Http\Controllers\Guru\PenilaianController::class, 'update'])->name('penilaian.update');
+    Route::delete('/penilaian/{penilaian}', [App\Http\Controllers\Guru\PenilaianController::class, 'destroy'])->name('penilaian.destroy');
+
+
+    // ujian harian 
+     Route::prefix('ujian-harian')->name('penilaian.uh.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Guru\UjianHarianController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\Guru\UjianHarianController::class, 'create'])->name('create');
+        Route::post('/store', [App\Http\Controllers\Guru\UjianHarianController::class, 'store'])->name('store');
+        Route::get('/{id}', [App\Http\Controllers\Guru\UjianHarianController::class, 'show'])->name('show');
+        Route::get('/{id}/edit', [App\Http\Controllers\Guru\UjianHarianController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [App\Http\Controllers\Guru\UjianHarianController::class, 'update'])->name('update');
+        Route::delete('/{id}', [App\Http\Controllers\Guru\UjianHarianController::class, 'destroy'])->name('destroy');
+        Route::post('/{id}/publish', [App\Http\Controllers\Guru\UjianHarianController::class, 'publish'])->name('publish');
+        Route::get('/{id}/download-soal', [App\Http\Controllers\Guru\UjianHarianController::class, 'downloadSoal'])->name('download.soal');
+        Route::get('/{id}/download-kunci', [App\Http\Controllers\Guru\UjianHarianController::class, 'downloadKunci'])->name('download.kunci');
+    });
+    
+    // Alias untuk kemudahan
+    Route::get('/uh', [App\Http\Controllers\Guru\UjianHarianController::class, 'index'])->name('penilaian.uh');
+
     // CRUD Absensi (tanpa create & edit)
     //Route::resource('absensi', App\Http\Controllers\Guru\AbsensiController::class)->except(['create', 'edit', 'show']);
 

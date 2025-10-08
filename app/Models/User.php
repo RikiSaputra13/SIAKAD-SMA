@@ -102,4 +102,9 @@ class User extends Authenticatable
     {
         return $this->role === 'admin';
     }
+
+    public function guru()
+    {
+        return $this->hasOne(Guru::class, 'user_id', 'id');
+    }
 }
