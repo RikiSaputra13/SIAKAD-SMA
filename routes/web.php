@@ -146,6 +146,38 @@ Route::prefix('guru')->name('guru.')->middleware('role:guru')->group(function ()
         Route::get('/{id}/download-soal', [App\Http\Controllers\Guru\UjianHarianController::class, 'downloadSoal'])->name('download.soal');
         Route::get('/{id}/download-kunci', [App\Http\Controllers\Guru\UjianHarianController::class, 'downloadKunci'])->name('download.kunci');
     });
+
+    // Routes untuk UTS
+Route::prefix('ujian-tengah-semester')->name('penilaian.uts.')->group(function () {
+    Route::get('/', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'index'])->name('index');
+    Route::get('/create', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'create'])->name('create');
+    Route::post('/store', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'store'])->name('store');
+    Route::get('/{id}', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'show'])->name('show');
+    Route::get('/{id}/edit', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'edit'])->name('edit');
+    Route::put('/{id}', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'update'])->name('update');
+    Route::delete('/{id}', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'destroy'])->name('destroy');
+    Route::post('/{id}/publish', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'publish'])->name('publish');
+    Route::get('/{id}/download-soal', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'downloadSoal'])->name('download.soal');
+    Route::get('/{id}/download-kunci', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'downloadKunci'])->name('download.kunci');
+});
+
+// Routes untuk UAS
+Route::prefix('ujian-akhir-semester')->name('penilaian.uas.')->group(function () {
+    Route::get('/', [App\Http\Controllers\Guru\UjianAkhirSemesterController::class, 'index'])->name('index');
+    Route::get('/create', [App\Http\Controllers\Guru\UjianAkhirSemesterController::class, 'create'])->name('create');
+    Route::post('/store', [App\Http\Controllers\Guru\UjianAkhirSemesterController::class, 'store'])->name('store');
+    Route::get('/{id}', [App\Http\Controllers\Guru\UjianAkhirSemesterController::class, 'show'])->name('show');
+    Route::get('/{id}/edit', [App\Http\Controllers\Guru\UjianAkhirSemesterController::class, 'edit'])->name('edit');
+    Route::put('/{id}', [App\Http\Controllers\Guru\UjianAkhirSemesterController::class, 'update'])->name('update');
+    Route::delete('/{id}', [App\Http\Controllers\Guru\UjianAkhirSemesterController::class, 'destroy'])->name('destroy');
+    Route::post('/{id}/publish', [App\Http\Controllers\Guru\UjianAkhirSemesterController::class, 'publish'])->name('publish');
+    Route::get('/{id}/download-soal', [App\Http\Controllers\Guru\UjianAkhirSemesterController::class, 'downloadSoal'])->name('download.soal');
+    Route::get('/{id}/download-kunci', [App\Http\Controllers\Guru\UjianAkhirSemesterController::class, 'downloadKunci'])->name('download.kunci');
+});
+
+// Alias untuk kemudahan
+Route::get('/uts', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'index'])->name('penilaian.uts');
+Route::get('/uas', [App\Http\Controllers\Guru\UjianAkhirSemesterController::class, 'index'])->name('penilaian.uas');
     
     // Alias untuk kemudahan
     Route::get('/uh', [App\Http\Controllers\Guru\UjianHarianController::class, 'index'])->name('penilaian.uh');

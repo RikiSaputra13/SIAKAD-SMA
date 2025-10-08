@@ -12,96 +12,103 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
-class UjianHarianController extends Controller
+class UjianTengahSemesterController extends Controller
 {
     public function index(Request $request)
-{
-    Log::info('=== Memasuki method GuruPenilaianController@index ===');
+    {
+        Log::info('=== Memasuki method UjianTengahSemesterController@index ===');
 
-    // Ambil data guru dari user yang sedang login
-    $user = auth()->user();
-    Log::info('User login:', ['id' => $user->id, 'role' => $user->role]);
+        // Ambil data guru dari user yang sedang login
+        $user = auth()->user();
+        Log::info('User login:', ['id' => $user->id, 'role' => $user->role]);
 
-    $guru = $user->guru;
+        $guru = $user->guru;
 
-    // Jika user login tidak terhubung dengan data guru
-    if (!$guru) {
-        Log::warning('User tidak memiliki data guru yang terkait.', ['user_id' => $user->id]);
-        return redirect()->back()->with('error', 'Data guru tidak ditemukan untuk akun ini!');
+        // Jika user login tidak terhubung dengan data guru
+        if (!$guru) {
+            Log::warning('User tidak memiliki data guru yang terkait.', ['user_id' => $user->id]);
+            return redirect()->back()->with('error', 'Data guru tidak ditemukan untuk akun ini!');
+        }
+
+        $guruId = $guru->id;
+        Log::info('Guru ditemukan:', ['guru_id' => $guruId, 'nama' => $guru->nama]);
+
+        // Ambil tipe ujian UTS
+        $tipeUjianUTS = TipeUjian::where('kode', 'pts')->first();
+        if (!$tipeUjianUTS) {
+            Log::error('Tipe ujian UTS (kode: pts) tidak ditemukan di database.');
+            return redirect()->back()->with('error', 'Tipe ujian UTS tidak ditemukan!');
+        }
+        Log::info('Tipe ujian UTS ditemukan:', ['id' => $tipeUjianUTS->id]);
+
+        // Query ujian UTS berdasarkan guru login dan tipe ujian
+        $query = Ujian::with(['kelas', 'tipeUjian'])
+                      ->where('guru_id', $guruId)
+                      ->where('tipe_ujian_id', $tipeUjianUTS->id);
+
+        // Filter berdasarkan kelas
+        if ($request->filled('kelas_id')) {
+            $query->where('kelas_id', $request->kelas_id);
+            Log::info('Filter kelas diterapkan:', ['kelas_id' => $request->kelas_id]);
+        }
+
+        // Filter berdasarkan status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+            Log::info('Filter status diterapkan:', ['status' => $request->status]);
+        }
+
+        // Ambil data ujian
+        $ujian = $query->orderBy('created_at', 'desc')->get();
+        Log::info('Jumlah ujian UTS ditemukan:', ['total' => $ujian->count()]);
+
+        // Ambil daftar kelas yang diajar guru ini
+        $kelasOptions = Jadwal::where('guru_id', $guruId)
+                            ->with('kelas')
+                            ->get()
+                            ->pluck('kelas.nama_kelas', 'kelas.id')
+                            ->unique();
+
+        Log::info('Jumlah kelas ditemukan untuk guru:', ['total_kelas' => $kelasOptions->count()]);
+
+        // Hitung statistik ujian
+        $statistik = [
+            'total'      => $ujian->count(),
+            'draft'      => $ujian->where('status', 'draft')->count(),
+            'published'  => $ujian->where('status', 'published')->count(),
+            'completed'  => $ujian->where('status', 'completed')->count(),
+        ];
+
+        Log::info('Statistik ujian UTS:', $statistik);
+
+        // Tampilkan ke view
+        Log::info('Render view: guru.penilaian.uts-index');
+        return view('guru.penilaian.uts-index', compact(
+            'ujian',
+            'kelasOptions',
+            'statistik'
+        ));
     }
-
-    $guruId = $guru->id;
-    Log::info('Guru ditemukan:', ['guru_id' => $guruId, 'nama' => $guru->nama]);
-
-    // Ambil tipe ujian harian
-    $tipeUjianHarian = TipeUjian::where('kode', 'uh')->first();
-    if (!$tipeUjianHarian) {
-        Log::error('Tipe ujian harian (kode: uh) tidak ditemukan di database.');
-        return redirect()->back()->with('error', 'Tipe ujian harian tidak ditemukan!');
-    }
-    Log::info('Tipe ujian harian ditemukan:', ['id' => $tipeUjianHarian->id]);
-
-    // Query ujian harian berdasarkan guru login dan tipe ujian
-    $query = Ujian::with(['kelas', 'tipeUjian'])
-                  ->where('guru_id', $guruId)
-                  ->where('tipe_ujian_id', $tipeUjianHarian->id);
-
-    // Filter berdasarkan kelas
-    if ($request->filled('kelas_id')) {
-        $query->where('kelas_id', $request->kelas_id);
-        Log::info('Filter kelas diterapkan:', ['kelas_id' => $request->kelas_id]);
-    }
-
-    // Filter berdasarkan status
-    if ($request->filled('status')) {
-        $query->where('status', $request->status);
-        Log::info('Filter status diterapkan:', ['status' => $request->status]);
-    }
-
-    // Ambil data ujian
-    $ujian = $query->orderBy('created_at', 'desc')->get();
-    Log::info('Jumlah ujian ditemukan:', ['total' => $ujian->count()]);
-
-    // Ambil daftar kelas yang diajar guru ini
-    $kelasOptions = Jadwal::where('guru_id', $guruId)
-                        ->with('kelas')
-                        ->get()
-                        ->pluck('kelas.nama_kelas', 'kelas.id')
-                        ->unique();
-
-    Log::info('Jumlah kelas ditemukan untuk guru:', ['total_kelas' => $kelasOptions->count()]);
-
-    // Hitung statistik ujian
-    $statistik = [
-        'total'      => $ujian->count(),
-        'draft'      => $ujian->where('status', 'draft')->count(),
-        'published'  => $ujian->where('status', 'published')->count(),
-        'completed'  => $ujian->where('status', 'completed')->count(),
-    ];
-
-    Log::info('Statistik ujian:', $statistik);
-
-    // Tampilkan ke view
-    Log::info('Render view: guru.penilaian.uh-index');
-    return view('guru.penilaian.uh-index', compact(
-        'ujian',
-        'kelasOptions',
-        'statistik'
-    ));
-}
 
     /**
-     * Show the form for creating a new ujian harian.
+     * Show the form for creating a new ujian UTS.
      */
     public function create()
     {
-        $guruId = auth()->user()->guru->id;
+        $user = auth()->user();
+        $guru = $user->guru;
+
+        if (!$guru) {
+            return redirect()->back()->with('error', 'Data guru tidak ditemukan untuk akun ini!');
+        }
+
+        $guruId = $guru->id;
         
-        // Ambil tipe ujian harian
-        $tipeUjianHarian = TipeUjian::where('kode', 'uh')->first();
+        // Ambil tipe ujian UTS
+        $tipeUjianUTS = TipeUjian::where('kode', 'pts')->first();
         
-        if (!$tipeUjianHarian) {
-            return redirect()->back()->with('error', 'Tipe ujian harian tidak ditemukan!');
+        if (!$tipeUjianUTS) {
+            return redirect()->back()->with('error', 'Tipe ujian UTS tidak ditemukan!');
         }
 
         // Ambil data untuk dropdown
@@ -115,23 +122,23 @@ class UjianHarianController extends Controller
                             ->distinct()
                             ->pluck('mata_pelajaran');
 
-        // Set waktu default
+        // Set waktu default untuk UTS (biasanya lebih lama dari UH)
         $waktuDefault = [
             'mulai' => now()->format('Y-m-d\TH:i'),
-            'selesai' => now()->addHours(2)->format('Y-m-d\TH:i'),
-            'batas' => now()->addHours(3)->format('Y-m-d\TH:i')
+            'selesai' => now()->addHours(3)->format('Y-m-d\TH:i'), // 3 jam untuk UTS
+            'batas' => now()->addHours(4)->format('Y-m-d\TH:i')
         ];
 
-        return view('guru.penilaian.uh-create', compact(
+        return view('guru.penilaian.uts-create', compact(
             'kelasOptions',
             'mapelOptions',
-            'tipeUjianHarian',
+            'tipeUjianUTS',
             'waktuDefault'
         ));
     }
 
     /**
-     * Store a newly created ujian harian.
+     * Store a newly created ujian UTS.
      */
     public function store(Request $request)
     {
@@ -149,22 +156,29 @@ class UjianHarianController extends Controller
             'deskripsi' => 'nullable|string'
         ]);
 
-        // Ambil tipe ujian harian
-        $tipeUjianHarian = TipeUjian::where('kode', 'uh')->first();
+        $user = auth()->user();
+        $guru = $user->guru;
+
+        if (!$guru) {
+            return redirect()->back()->with('error', 'Data guru tidak ditemukan untuk akun ini!');
+        }
+
+        // Ambil tipe ujian UTS
+        $tipeUjianUTS = TipeUjian::where('kode', 'pts')->first();
 
         // Upload berkas soal
-        $berkasSoalPath = $request->file('berkas_soal')->store('ujian/harian/soal', 'public');
+        $berkasSoalPath = $request->file('berkas_soal')->store('ujian/uts/soal', 'public');
         
         $berkasKunciPath = null;
         if ($request->hasFile('berkas_kunci_jawaban')) {
-            $berkasKunciPath = $request->file('berkas_kunci_jawaban')->store('ujian/harian/kunci-jawaban', 'public');
+            $berkasKunciPath = $request->file('berkas_kunci_jawaban')->store('ujian/uts/kunci-jawaban', 'public');
         }
 
-        // Buat ujian harian
+        // Buat ujian UTS
         $ujian = Ujian::create([
-            'guru_id' => auth()->user()->guru->id,
+            'guru_id' => $guru->id,
             'kelas_id' => $request->kelas_id,
-            'tipe_ujian_id' => $tipeUjianHarian->id,
+            'tipe_ujian_id' => $tipeUjianUTS->id,
             'mata_pelajaran' => $request->mata_pelajaran,
             'judul_ujian' => $request->judul_ujian,
             'deskripsi' => $request->deskripsi,
@@ -179,20 +193,32 @@ class UjianHarianController extends Controller
             'is_active' => true
         ]);
 
-        return redirect()->route('guru.penilaian.uh')
-                         ->with('success', 'Ujian harian berhasil dibuat!');
+        return redirect()->route('guru.penilaian.uts')
+                         ->with('success', 'Ujian Tengah Semester berhasil dibuat!');
     }
 
     /**
-     * Display the specified ujian harian.
+     * Display the specified ujian UTS.
      */
     public function show(string $id)
     {
-        $guruId = auth()->user()->guru->id;
+        $user = auth()->user();
+        $guru = $user->guru;
+
+        if (!$guru) {
+            return redirect()->back()->with('error', 'Data guru tidak ditemukan untuk akun ini!');
+        }
+
+        $guruId = $guru->id;
         $ujian = Ujian::with(['kelas', 'tipeUjian', 'pengumpulan.siswa'])
                      ->where('id', $id)
                      ->where('guru_id', $guruId)
                      ->firstOrFail();
+
+        // Pastikan ini ujian UTS
+        if ($ujian->tipeUjian->kode !== 'pts') {
+            abort(404, 'Ujian bukan Ujian Tengah Semester');
+        }
 
         // Hitung statistik pengumpulan
         $statistikPengumpulan = [
@@ -202,23 +228,30 @@ class UjianHarianController extends Controller
             'sudah_dinilai' => $ujian->pengumpulan->where('status', 'dinilai')->count(),
         ];
 
-        return view('guru.penilaian.uh-show', compact('ujian', 'statistikPengumpulan'));
+        return view('guru.penilaian.uts-show', compact('ujian', 'statistikPengumpulan'));
     }
 
     /**
-     * Show the form for editing the specified ujian harian.
+     * Show the form for editing the specified ujian UTS.
      */
     public function edit(string $id)
     {
-        $guruId = auth()->user()->guru->id;
+        $user = auth()->user();
+        $guru = $user->guru;
+
+        if (!$guru) {
+            return redirect()->back()->with('error', 'Data guru tidak ditemukan untuk akun ini!');
+        }
+
+        $guruId = $guru->id;
         $ujian = Ujian::with(['kelas', 'tipeUjian'])
                      ->where('id', $id)
                      ->where('guru_id', $guruId)
                      ->firstOrFail();
 
-        // Pastikan ini ujian harian
-        if ($ujian->tipeUjian->kode !== 'uh') {
-            abort(404);
+        // Pastikan ini ujian UTS
+        if ($ujian->tipeUjian->kode !== 'pts') {
+            abort(404, 'Ujian bukan Ujian Tengah Semester');
         }
 
         $kelasOptions = Jadwal::where('guru_id', $guruId)
@@ -231,7 +264,7 @@ class UjianHarianController extends Controller
                             ->distinct()
                             ->pluck('mata_pelajaran');
 
-        return view('guru.penilaian.uh-edit', compact(
+        return view('guru.penilaian.uts-edit', compact(
             'ujian',
             'kelasOptions',
             'mapelOptions'
@@ -239,14 +272,26 @@ class UjianHarianController extends Controller
     }
 
     /**
-     * Update the specified ujian harian.
+     * Update the specified ujian UTS.
      */
     public function update(Request $request, string $id)
     {
-        $guruId = auth()->user()->guru->id;
+        $user = auth()->user();
+        $guru = $user->guru;
+
+        if (!$guru) {
+            return redirect()->back()->with('error', 'Data guru tidak ditemukan untuk akun ini!');
+        }
+
+        $guruId = $guru->id;
         $ujian = Ujian::where('id', $id)
                      ->where('guru_id', $guruId)
                      ->firstOrFail();
+
+        // Pastikan ini ujian UTS
+        if ($ujian->tipeUjian->kode !== 'pts') {
+            abort(404, 'Ujian bukan Ujian Tengah Semester');
+        }
 
         $request->validate([
             'judul_ujian' => 'required|string|max:255',
@@ -269,7 +314,7 @@ class UjianHarianController extends Controller
             if ($ujian->berkas_soal) {
                 Storage::disk('public')->delete($ujian->berkas_soal);
             }
-            $berkasSoalPath = $request->file('berkas_soal')->store('ujian/harian/soal', 'public');
+            $berkasSoalPath = $request->file('berkas_soal')->store('ujian/uts/soal', 'public');
         } else {
             $berkasSoalPath = $ujian->berkas_soal;
         }
@@ -280,7 +325,7 @@ class UjianHarianController extends Controller
             if ($ujian->berkas_kunci_jawaban) {
                 Storage::disk('public')->delete($ujian->berkas_kunci_jawaban);
             }
-            $berkasKunciPath = $request->file('berkas_kunci_jawaban')->store('ujian/harian/kunci-jawaban', 'public');
+            $berkasKunciPath = $request->file('berkas_kunci_jawaban')->store('ujian/uts/kunci-jawaban', 'public');
         } else {
             $berkasKunciPath = $ujian->berkas_kunci_jawaban;
         }
@@ -300,19 +345,31 @@ class UjianHarianController extends Controller
             'status' => $request->status
         ]);
 
-        return redirect()->route('guru.penilaian.uh')
-                         ->with('success', 'Ujian harian berhasil diperbarui!');
+        return redirect()->route('guru.penilaian.uts')
+                         ->with('success', 'Ujian Tengah Semester berhasil diperbarui!');
     }
 
     /**
-     * Remove the specified ujian harian.
+     * Remove the specified ujian UTS.
      */
     public function destroy(string $id)
     {
-        $guruId = auth()->user()->guru->id;
+        $user = auth()->user();
+        $guru = $user->guru;
+
+        if (!$guru) {
+            return redirect()->back()->with('error', 'Data guru tidak ditemukan untuk akun ini!');
+        }
+
+        $guruId = $guru->id;
         $ujian = Ujian::where('id', $id)
                      ->where('guru_id', $guruId)
                      ->firstOrFail();
+
+        // Pastikan ini ujian UTS
+        if ($ujian->tipeUjian->kode !== 'pts') {
+            abort(404, 'Ujian bukan Ujian Tengah Semester');
+        }
 
         // Hapus file yang terkait
         if ($ujian->berkas_soal) {
@@ -324,34 +381,53 @@ class UjianHarianController extends Controller
 
         $ujian->delete();
 
-        return redirect()->route('guru.penilaian.uh')
-                         ->with('success', 'Ujian harian berhasil dihapus!');
+        return redirect()->route('guru.penilaian.uts')
+                         ->with('success', 'Ujian Tengah Semester berhasil dihapus!');
     }
 
     /**
-     * Publish ujian harian
+     * Publish ujian UTS
      */
     public function publish(string $id)
     {
-        $guruId = auth()->user()->guru->id;
+        $user = auth()->user();
+        $guru = $user->guru;
+
+        if (!$guru) {
+            return redirect()->back()->with('error', 'Data guru tidak ditemukan untuk akun ini!');
+        }
+
+        $guruId = $guru->id;
         $ujian = Ujian::where('id', $id)
                      ->where('guru_id', $guruId)
                      ->firstOrFail();
+
+        // Pastikan ini ujian UTS
+        if ($ujian->tipeUjian->kode !== 'pts') {
+            abort(404, 'Ujian bukan Ujian Tengah Semester');
+        }
 
         $ujian->update([
             'status' => 'published',
             'is_active' => true
         ]);
 
-        return redirect()->back()->with('success', 'Ujian harian berhasil dipublish!');
+        return redirect()->back()->with('success', 'Ujian Tengah Semester berhasil dipublish!');
     }
 
     /**
-     * Download berkas soal
+     * Download berkas soal UTS
      */
     public function downloadSoal(string $id)
     {
-        $guruId = auth()->user()->guru->id;
+        $user = auth()->user();
+        $guru = $user->guru;
+
+        if (!$guru) {
+            return redirect()->back()->with('error', 'Data guru tidak ditemukan untuk akun ini!');
+        }
+
+        $guruId = $guru->id;
         $ujian = Ujian::where('id', $id)
                      ->where('guru_id', $guruId)
                      ->firstOrFail();
@@ -361,15 +437,22 @@ class UjianHarianController extends Controller
         }
 
         return Storage::disk('public')->download($ujian->berkas_soal, 
-            'Soal UH - ' . $ujian->judul_ujian . '.pdf');
+            'Soal UTS - ' . $ujian->judul_ujian . '.pdf');
     }
 
     /**
-     * Download berkas kunci jawaban
+     * Download berkas kunci jawaban UTS
      */
     public function downloadKunci(string $id)
     {
-        $guruId = auth()->user()->guru->id;
+        $user = auth()->user();
+        $guru = $user->guru;
+
+        if (!$guru) {
+            return redirect()->back()->with('error', 'Data guru tidak ditemukan untuk akun ini!');
+        }
+
+        $guruId = $guru->id;
         $ujian = Ujian::where('id', $id)
                      ->where('guru_id', $guruId)
                      ->firstOrFail();
@@ -379,6 +462,6 @@ class UjianHarianController extends Controller
         }
 
         return Storage::disk('public')->download($ujian->berkas_kunci_jawaban, 
-            'Kunci Jawaban UH - ' . $ujian->judul_ujian . '.pdf');
+            'Kunci Jawaban UTS - ' . $ujian->judul_ujian . '.pdf');
     }
 }
