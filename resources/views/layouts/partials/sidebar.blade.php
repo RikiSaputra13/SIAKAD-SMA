@@ -143,13 +143,13 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a href="#" class="nav-link text-white {{ request()->routeIs('guru.soal.uts') ? 'active' : '' }}">
+                                <a href="{{ route('guru.penilaian.uts') }}" class="nav-link text-white {{ request()->routeIs('guru.penilaian.uts') ? 'active' : '' }}">
                                     <i class="nav-icon fas fa-file-alt"></i>
                                     <p>Ujian Tengah Semester</p>
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a href="#" class="nav-link text-white {{ request()->routeIs('guru.soal.uas') ? 'active' : '' }}">
+                                <a href="{{ route('guru.penilaian.uas') }}" class="nav-link text-white {{ request()->routeIs('guru.penilaian.uas') ? 'active' : '' }}">
                                     <i class="nav-icon fas fa-file-contract"></i>
                                     <p>Ujian Akhir Semester</p>
                                 </a>
