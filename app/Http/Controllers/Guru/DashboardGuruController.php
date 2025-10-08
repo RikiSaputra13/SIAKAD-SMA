@@ -8,6 +8,7 @@ use App\Models\Kelas;
 use App\Models\Jadwal;
 use App\Models\Siswa;
 use App\Models\Absensi;
+use Illuminate\Http\Request;
 
 class DashboardGuruController extends Controller
 {
@@ -47,4 +48,22 @@ class DashboardGuruController extends Controller
             'jadwalHariIni'
         ));
     }
+
+    public function jadwalGuru(Request $request) {
+    // Ambil guru yang sedang login
+    $guru = auth()->user();
+    
+    $query = Jadwal::with('kelas')
+                ->where('guru_id', $guru->id); // Hanya ambil jadwal guru yang login
+    
+    // Optional: Filter berdasarkan kelas jika diperlukan
+    if ($request->has('kelas_id') && $request->kelas_id != '') {
+        $query->where('kelas_id', $request->kelas_id);
+    }
+    
+    $jadwals = $query->get();
+    $kelas = Kelas::all(); // Untuk dropdown filter
+    
+    return view('guru.jadwal.index', compact('jadwals', 'kelas'));
+}
 }

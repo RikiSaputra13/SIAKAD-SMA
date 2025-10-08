@@ -16,22 +16,45 @@ class Guru extends Model
         'alamat',
         'jenis_kelamin',
         'no_hp',
+        'user_id', 
     ];
 
     /**
+     * Relasi ke model User (jika menggunakan sistem auth terpisah)
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Relasi ke model Jadwal
+     */
+    public function jadwals()
+    {
+        return $this->hasMany(Jadwal::class);
+    }
+
+    /**
      * Relasi ke model Kelas
-     * Seorang Guru bisa menjadi wali kelas untuk satu Kelas
      */
     public function kelas()
     {
         return $this->hasOne(Kelas::class, 'wali_kelas_id');
     }
 
-    /**
-     * Accessor untuk menampilkan nama guru dengan gelar (opsional)
-     */
     public function getNamaLengkapAttribute()
     {
         return $this->nama . ' - ' . $this->mapel;
     }
+
+    public function ujian()
+    {
+        return $this->hasMany(Ujian::class);
+    }
+    public function penilaian()
+    {
+        return $this->hasMany(Penilaian::class);
+    }
+    
 }
