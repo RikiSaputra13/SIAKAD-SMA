@@ -17,19 +17,32 @@ class SiswaController extends Controller
      * Dashboard siswa.
      */
     public function index()
-    {
-        $user = Auth::user();
+{
+    $user = Auth::user();
 
-        $jadwals = Jadwal::where('kelas_id', $user->siswa->kelas_id)
-                         ->orderByRaw("FIELD(hari,'Senin','Selasa','Rabu','Kamis','Jumat','Sabtu')")
-                         ->orderBy('jam_mulai')
-                         ->get();
+    // Cek apakah user sudah punya relasi siswa dan kelas_id
+    $siswa = $user->siswa;
+    $kelasId = $siswa ? $siswa->kelas_id : null;
 
-        $absensis = Absensi::where('siswa_id', $user->id)->get();
-        $pembayarans = Pembayaran::where('siswa_id', $user->id)->get();
-
-        return view('siswa.dashboard', compact('jadwals','absensis','pembayarans'));
+    if ($kelasId) {
+        $jadwals = Jadwal::where('kelas_id', $kelasId)
+            ->orderByRaw("FIELD(hari,'Senin','Selasa','Rabu','Kamis','Jumat','Sabtu')")
+            ->orderBy('jam_mulai')
+            ->get();
+    } else {
+        $jadwals = collect(); // kosongkan jadwal jika belum ada kelas
     }
+
+    $absensis = Absensi::where('siswa_id', $user->id)->get();
+    $pembayarans = Pembayaran::where('siswa_id', $user->id)->get();
+
+    return view('siswa.dashboard', [
+        'jadwals' => $jadwals,
+        'absensis' => $absensis,
+        'pembayarans' => $pembayarans,
+        'kelasBelumAda' => !$kelasId // untuk notifikasi di blade
+    ]);
+}
 
     /**
      * Halaman jadwal lengkap siswa.

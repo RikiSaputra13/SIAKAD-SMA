@@ -35,6 +35,7 @@ class Ujian extends Model
         'batas_pengumpulan' => 'datetime',
     ];
 
+    /** 🔹 Relasi antar model */
     public function guru()
     {
         return $this->belongsTo(Guru::class);
@@ -52,6 +53,31 @@ class Ujian extends Model
 
     public function pengumpulan()
     {
-        return $this->hasMany(PengumpulanUjian::class);
+        return $this->hasMany(PengumpulanUjian::class, 'ujian_id');
+    }
+
+    /** Alias opsional untuk pengumpulan */
+    public function jawaban()
+    {
+        return $this->hasMany(PengumpulanUjian::class, 'ujian_id');
+    }
+
+    /** 🔹 Fungsi bantu statistik pengumpulan */
+    public function getPengumpulanStats()
+    {
+        $this->loadMissing(['pengumpulan', 'kelas.siswas']);
+
+        $totalSiswa = $this->kelas->siswas->count() ?? 0;
+        $submitted = $this->pengumpulan->whereNotNull('berkas_jawaban')->count();
+        $graded = $this->pengumpulan->whereNotNull('nilai')->count();
+        $pending = $submitted - $graded;
+
+        return [
+            'total_siswa' => $totalSiswa,
+            'sudah_dikumpulkan' => $submitted,
+            'belum_dikumpulkan' => max($totalSiswa - $submitted, 0),
+            'sudah_dinilai' => $graded,
+            'belum_dinilai' => max($pending, 0),
+        ];
     }
 }

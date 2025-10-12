@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\Ujian;
 use App\Models\TipeUjian;
 use App\Models\Jadwal;
+use App\Models\PengumpulanUjian;
+use App\Models\Siswa;
 use App\Models\Kelas;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -363,6 +365,30 @@ class UjianHarianController extends Controller
         return Storage::disk('public')->download($ujian->berkas_soal, 
             'Soal UH - ' . $ujian->judul_ujian . '.pdf');
     }
+    public function showSoal(string $id)
+{
+    $guruId = auth()->user()->guru->id;
+    $ujian = Ujian::where('id', $id)
+                 ->where('guru_id', $guruId)
+                 ->firstOrFail();
+
+    if (!$ujian->berkas_soal) {
+        return redirect()->back()->with('error', 'Berkas soal tidak ditemukan!');
+    }
+
+    // Ambil file path
+    $filePath = storage_path('app/public/' . $ujian->berkas_soal);
+
+    if (!file_exists($filePath)) {
+        return redirect()->back()->with('error', 'File soal tidak ditemukan di server!');
+    }
+
+    // Tampilkan PDF di browser (inline)
+    return response()->file($filePath, [
+        'Content-Type' => 'application/pdf',
+        'Content-Disposition' => 'inline; filename="Soal UH - ' . $ujian->judul_ujian . '.pdf"'
+    ]);
+}
 
     /**
      * Download berkas kunci jawaban
@@ -381,4 +407,207 @@ class UjianHarianController extends Controller
         return Storage::disk('public')->download($ujian->berkas_kunci_jawaban, 
             'Kunci Jawaban UH - ' . $ujian->judul_ujian . '.pdf');
     }
+
+
+    // Tambahkan method ini di UjianHarianController
+
+/**
+ * Show student submissions for the exam
+ */
+/**
+ * Show student submissions for the exam
+ */
+/**
+ * Show student submissions for the exam
+ */
+// public function showSubmissions(string $id)
+// {
+//     $guruId = auth()->user()->guru->id;
+
+//     // Ambil ujian beserta relasi
+//     $ujian = Ujian::with(['kelas.siswas', 'tipeUjian', 'pengumpulan.siswa'])
+//         ->where('id', $id)
+//         ->where('guru_id', $guruId)
+//         ->firstOrFail();
+
+//     if (!$ujian->kelas) {
+//         return redirect()->route('guru.penilaian.uh.index')
+//                          ->with('error', 'Data kelas tidak ditemukan untuk ujian ini!');
+//     }
+
+//     // Gunakan helper dari model
+//     $statistikPengumpulan = $ujian->getPengumpulanStats();
+
+//     // Ambil daftar siswa (fallback aman)
+//     $allStudents = $ujian->kelas->siswas ?? collect();
+
+//     return view('guru.penilaian.uh-submissions', compact('ujian', 'statistikPengumpulan', 'allStudents'));
+// }
+
+
+public function showSubmissions(string $id)
+{
+    $guruId = auth()->user()->guru->id;
+
+    // Ambil ujian beserta semua relasi penting
+    $ujian = Ujian::with([
+        'kelas.siswas',
+        'tipeUjian',
+        'pengumpulan.siswa'
+    ])
+    ->where('id', $id)
+    ->where('guru_id', $guruId)
+    ->firstOrFail();
+
+    if (!$ujian->kelas) {
+        return redirect()->route('guru.penilaian.uh.index')
+                         ->with('error', 'Data kelas tidak ditemukan untuk ujian ini!');
+    }
+
+    // 🔹 Ambil data pengumpulan langsung dari tabel pengumpulan_ujian
+    $pengumpulan = \App\Models\PengumpulanUjian::with('siswa')
+        ->where('ujian_id', $ujian->id)
+        ->get();
+
+    // 🔹 Buat koleksi siswa dari kelas
+    $semuaSiswa = $ujian->kelas->siswas ?? collect();
+
+    // 🔹 Jadikan pengumpulan keyed by siswa_id agar mudah dicocokkan
+    $pengumpulanMap = $pengumpulan->keyBy('siswa_id');
+
+    // 🔹 Hitung statistik dinamis
+    $totalSiswa = $semuaSiswa->count();
+
+$sudahKumpul = $pengumpulan->whereNotNull('berkas_jawaban')->count();
+
+$sudahDinilai = $pengumpulan->filter(function ($item) {
+    return $item->nilai !== null && $item->nilai > 0;
+})->count();
+
+$belumDinilai = $pengumpulan->filter(function ($item) {
+    return $item->nilai === null || $item->nilai <= 0;
+})->count();
+
+$belumKumpul = $totalSiswa - $sudahKumpul;
+
+
+    $statistikPengumpulan = [
+        'total_siswa' => $totalSiswa,
+        'sudah_dikumpulkan' => $sudahKumpul,
+        'belum_dikumpulkan' => $belumKumpul,
+        'sudah_dinilai' => $sudahDinilai,
+        'belum_dinilai' => $belumDinilai,
+    ];
+
+    return view('guru.penilaian.uh-submissions', compact(
+        'ujian',
+        'statistikPengumpulan',
+        'semuaSiswa',
+        'pengumpulanMap'
+    ));
+}
+
+
+
+/**
+ * Download student's submitted file
+ */
+public function downloadJawaban($ujianId, $pengumpulanId)
+{
+    $guruId = auth()->user()->guru->id;
+    
+    // Pastikan ujian milik guru yang login
+    $ujian = Ujian::where('id', $ujianId)
+                 ->where('guru_id', $guruId)
+                 ->firstOrFail();
+
+    $pengumpulan = PengumpulanUjian::where('id', $pengumpulanId)
+                                  ->where('ujian_id', $ujianId)
+                                  ->firstOrFail();
+
+    if (!$pengumpulan->berkas_jawaban) {
+        return redirect()->back()->with('error', 'Berkas jawaban tidak ditemukan!');
+    }
+
+    $fileName = 'Jawaban - ' . $pengumpulan->siswa->nama . ' - ' . $ujian->judul_ujian . '.pdf';
+    
+    return Storage::disk('public')->download($pengumpulan->berkas_jawaban, $fileName);
+}
+
+/**
+ * View student's submitted file in browser
+ */
+public function showJawaban($ujianId, $pengumpulanId)
+{
+    $guruId = auth()->user()->guru->id;
+    
+    $ujian = Ujian::where('id', $ujianId)
+                 ->where('guru_id', $guruId)
+                 ->firstOrFail();
+
+    $pengumpulan = PengumpulanUjian::where('id', $pengumpulanId)
+                                  ->where('ujian_id', $ujianId)
+                                  ->firstOrFail();
+
+    if (!$pengumpulan->berkas_jawaban) {
+        return redirect()->back()->with('error', 'Berkas jawaban tidak ditemukan!');
+    }
+
+    $filePath = storage_path('app/public/' . $pengumpulan->berkas_jawaban);
+
+    if (!file_exists($filePath)) {
+        return redirect()->back()->with('error', 'File jawaban tidak ditemukan di server!');
+    }
+
+    return response()->file($filePath, [
+        'Content-Type' => 'application/pdf',
+        'Content-Disposition' => 'inline; filename="Jawaban - ' . $pengumpulan->siswa->nama . ' - ' . $ujian->judul_ujian . '.pdf"'
+    ]);
+}
+
+/**
+ * Update nilai for student submission
+ */
+public function updateNilai(Request $request, $ujianId, $pengumpulanId)
+{
+    $guruId = auth()->user()->guru->id;
+
+    // Ambil ujian milik guru ini
+    $ujian = Ujian::where('id', $ujianId)
+                 ->where('guru_id', $guruId)
+                 ->firstOrFail();
+
+    // Pastikan pengumpulan milik ujian ini
+    $pengumpulan = PengumpulanUjian::where('id', $pengumpulanId)
+                                  ->where('ujian_id', $ujianId)
+                                  ->firstOrFail();
+
+    // Tentukan nilai maksimum yang valid (fallback ke total_nilai ujian atau 100)
+    $maxNilai = $request->max_nilai ?? $ujian->total_nilai ?? 100;
+
+    // Validasi input aman
+    $request->validate([
+        'nilai' => [
+            'required',
+            'numeric',
+            'min:0',
+            function ($attribute, $value, $fail) use ($maxNilai) {
+                if ($value > $maxNilai) {
+                    $fail("Nilai tidak boleh melebihi batas maksimum ($maxNilai).");
+                }
+            },
+        ],
+        'catatan_guru' => 'nullable|string|max:500',
+    ]);
+
+    // Update nilai pengumpulan
+    $pengumpulan->update([
+        'nilai' => $request->nilai,
+        'catatan_guru' => $request->catatan_guru,
+        'status' => $request->nilai > 0 ? 'dinilai' : 'dikumpulkan', // otomatis ubah status
+    ]);
+
+    return redirect()->back()->with('success', 'Nilai berhasil diperbarui!');
+}
+
 }

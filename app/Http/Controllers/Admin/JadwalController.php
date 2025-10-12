@@ -31,7 +31,41 @@ class JadwalController extends Controller
     }
 
 
-    public function store(Request $request)
+//     public function store(Request $request)
+// {
+//     $request->validate([
+//         'guru_id' => 'required|exists:gurus,id',
+//         'kelas_id' => 'required|exists:kelas,id',
+//         'hari' => 'required|string',
+//         'mata_pelajaran' => 'required|string',
+//         'jam_mulai' => 'required',
+//         'jam_selesai' => 'required|after:jam_mulai',
+//     ]);
+
+//     // Cek jadwal bentrok: hari, kelas, dan jam
+//     $exists = Jadwal::where('kelas_id', $request->kelas_id)
+//         ->where('hari', $request->hari)
+//         ->where(function($q) use ($request) {
+//             $q->whereBetween('jam_mulai', [$request->jam_mulai, $request->jam_selesai])
+//               ->orWhereBetween('jam_selesai', [$request->jam_mulai, $request->jam_selesai])
+//               ->orWhere(function($q2) use ($request) {
+//                   $q2->where('jam_mulai', '<=', $request->jam_mulai)
+//                      ->where('jam_selesai', '>=', $request->jam_selesai);
+//               });
+//         })
+//         ->exists();
+
+//     if ($exists) {
+//         return back()
+//             ->withErrors(['Jadwal sudah tersedia pada hari dan jam tersebut!'])
+//             ->withInput();
+//     }
+
+//     Jadwal::create($request->all());
+//     return redirect()->route('admin.jadwal.index')->with('success', 'Jadwal berhasil ditambahkan');
+// }
+
+public function store(Request $request)
 {
     $request->validate([
         'guru_id' => 'required|exists:gurus,id',
@@ -42,8 +76,8 @@ class JadwalController extends Controller
         'jam_selesai' => 'required|after:jam_mulai',
     ]);
 
-    // Cek jadwal bentrok: hari, kelas, dan jam
-    $exists = Jadwal::where('kelas_id', $request->kelas_id)
+    // Cek jadwal bentrok untuk KELAS
+    $existsKelas = Jadwal::where('kelas_id', $request->kelas_id)
         ->where('hari', $request->hari)
         ->where(function($q) use ($request) {
             $q->whereBetween('jam_mulai', [$request->jam_mulai, $request->jam_selesai])
@@ -55,9 +89,28 @@ class JadwalController extends Controller
         })
         ->exists();
 
-    if ($exists) {
+    if ($existsKelas) {
         return back()
-            ->withErrors(['Jadwal sudah tersedia pada hari dan jam tersebut!'])
+            ->withErrors(['Jadwal sudah tersedia untuk kelas ini pada hari dan jam tersebut!'])
+            ->withInput();
+    }
+
+    // Cek jadwal bentrok untuk GURU
+    $existsGuru = Jadwal::where('guru_id', $request->guru_id)
+        ->where('hari', $request->hari)
+        ->where(function($q) use ($request) {
+            $q->whereBetween('jam_mulai', [$request->jam_mulai, $request->jam_selesai])
+              ->orWhereBetween('jam_selesai', [$request->jam_mulai, $request->jam_selesai])
+              ->orWhere(function($q2) use ($request) {
+                  $q2->where('jam_mulai', '<=', $request->jam_mulai)
+                     ->where('jam_selesai', '>=', $request->jam_selesai);
+              });
+        })
+        ->exists();
+
+    if ($existsGuru) {
+        return back()
+            ->withErrors(['Guru ini sudah memiliki jadwal mengajar pada hari dan jam tersebut!'])
             ->withInput();
     }
 

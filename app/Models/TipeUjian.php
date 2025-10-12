@@ -11,13 +11,7 @@ class TipeUjian extends Model
 
     protected $table = 'tipe_ujian';
 
-    protected $fillable = [
-        'nama',
-        'kode',
-        'deskripsi',
-        'bobot',
-        'is_active'
-    ];
+    protected $fillable = ['nama', 'kode', 'deskripsi', 'bobot', 'is_active'];
 
     public function ujian()
     {

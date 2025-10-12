@@ -8,7 +8,9 @@ use App\Models\Penilaian;
 use App\Models\Ujian;
 use App\Models\Kelas;
 use App\Models\Jadwal;
+use Illuminate\Support\Facades\Auth;
 use App\Models\Siswa;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 class PenilaianController extends Controller
@@ -81,40 +83,128 @@ class PenilaianController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
-    {
-        $guruId = auth()->user();
-        
-        // Ambil data untuk dropdown
-        $kelasOptions = Jadwal::where('guru_id', $guruId)
-                            ->with('kelas')
+//    public function create()
+// {
+//     // Ambil user login
+//     $user = Auth::user();
+
+//     // Ambil data guru berdasarkan user_id
+//     $guru = \App\Models\Guru::where('user_id', $user->id)->first();
+
+//     if (!$guru) {
+//         return redirect()->back()->with('error', 'Data guru tidak ditemukan.');
+//     }
+
+//     $guruId = $guru->id;
+
+//     // Ambil data kelas dari jadwal guru
+//     $kelasOptions = \App\Models\Jadwal::where('guru_id', $guruId)
+//                         ->with('kelas')
+//                         ->get()
+//                         ->pluck('kelas.nama_kelas', 'kelas.id')
+//                         ->unique();
+
+//     // Ambil mata pelajaran dari jadwal guru
+//     $mapelOptions = \App\Models\Jadwal::where('guru_id', $guruId)
+//                         ->distinct()
+//                         ->pluck('mata_pelajaran');
+
+//     // Ambil siswa dari kelas yang diajar guru
+//     $siswaOptions = \App\Models\Siswa::whereIn('kelas_id', $kelasOptions->keys())
+//                         ->get()
+//                         ->pluck('nama', 'id');
+
+//     $tahunAjaran = now()->year;
+//     $semesterOptions = [
+//         '1' => 'Semester 1',
+//         '2' => 'Semester 2',
+//     ];
+
+//     return view('guru.penilaian.create', compact(
+//         'kelasOptions',
+//         'mapelOptions',
+//         'siswaOptions',
+//         'tahunAjaran',
+//         'semesterOptions'
+//     ));
+// }
+
+
+
+public function create()
+{
+    try {
+        // Ambil user login
+        $user = Auth::user();
+
+        // Ambil data guru berdasarkan user_id
+        $guru = \App\Models\Guru::where('user_id', $user->id)->first();
+
+        if (!$guru) {
+            return redirect()->back()->with('error', 'Data guru tidak ditemukan.');
+        }
+
+        $guruId = $guru->id;
+
+        // Debug: Cek apakah guru memiliki jadwal
+        Log::info("Guru ID: {$guruId}");
+
+        // Ambil data kelas dari jadwal guru dengan handling yang lebih baik
+        $kelasOptions = \App\Models\Jadwal::where('guru_id', $guruId)
+                            ->with(['kelas' => function($query) {
+                                $query->select('id', 'nama_kelas');
+                            }])
                             ->get()
-                            ->pluck('kelas.nama_kelas', 'kelas.id')
+                            ->filter(function($jadwal) {
+                                return $jadwal->kelas !== null;
+                            })
+                            ->mapWithKeys(function($jadwal) {
+                                return [$jadwal->kelas->id => $jadwal->kelas->nama_kelas];
+                            })
                             ->unique();
 
-        $mapelOptions = Jadwal::where('guru_id', $guruId)
-                            ->distinct()
-                            ->pluck('mata_pelajaran');
+        // Debug: Cek hasil query kelas
+        Log::info("Kelas Options: " . json_encode($kelasOptions));
 
-        // Ambil siswa berdasarkan kelas yang diajar
-        $siswaOptions = Siswa::whereIn('kelas_id', $kelasOptions->keys())
-                           ->get()
-                           ->pluck('nama', 'id');
+        // Ambil mata pelajaran dari jadwal guru
+        $mapelOptions = \App\Models\Jadwal::where('guru_id', $guruId)
+                            ->whereNotNull('mata_pelajaran')
+                            ->distinct()
+                            ->pluck('mata_pelajaran')
+                            ->filter()
+                            ->values();
+
+        // Debug: Cek hasil query mapel
+        Log::info("Mapel Options: " . json_encode($mapelOptions));
+
+        // Handle jika tidak ada data
+        if ($kelasOptions->isEmpty()) {
+            return redirect()->back()->with('error', 'Tidak ada kelas yang diajar oleh guru ini.');
+        }
+
+        if ($mapelOptions->isEmpty()) {
+            return redirect()->back()->with('error', 'Tidak ada mata pelajaran yang diajar oleh guru ini.');
+        }
 
         $tahunAjaran = now()->year;
         $semesterOptions = [
             '1' => 'Semester 1',
-            '2' => 'Semester 2'
+            '2' => 'Semester 2',
         ];
 
         return view('guru.penilaian.create', compact(
             'kelasOptions',
             'mapelOptions',
-            'siswaOptions',
             'tahunAjaran',
             'semesterOptions'
         ));
+
+    } catch (\Exception $e) {
+        Log::error('Error in create method: ' . $e->getMessage());
+        return redirect()->back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
     }
+}
+
 
     /**
      * Store a newly created resource in storage.
@@ -307,4 +397,46 @@ class PenilaianController extends Controller
         if ($nilai >= 60) return 'D';
         return 'E';
     }
+
+
+ public function getSiswa($kelasId)
+{
+    try {
+        Log::info("getSiswa called with kelasId: {$kelasId}");
+
+        // Validasi input
+        if (!$kelasId || $kelasId == 'null') {
+            return response()->json(['error' => 'Kelas ID tidak valid'], 400);
+        }
+
+        // Cek apakah kelas exists
+        $kelas = \App\Models\Kelas::find($kelasId);
+        if (!$kelas) {
+            return response()->json(['error' => 'Kelas tidak ditemukan'], 404);
+        }
+
+        // Ambil semua siswa berdasarkan kelas_id
+        $siswa = \App\Models\Siswa::where('kelas_id', $kelasId)
+            ->select('id', 'nama', 'nis')
+            ->orderBy('nama')
+            ->get();
+
+        Log::info("Siswa found: " . $siswa->count());
+
+        // Format response
+        $formattedSiswa = $siswa->map(function($item) {
+            return [
+                'id' => $item->id,
+                'nama' => $item->nama,
+                'nis' => $item->nis
+            ];
+        });
+
+        return response()->json($formattedSiswa);
+
+    } catch (\Exception $e) {
+        Log::error('Error in getSiswa: ' . $e->getMessage());
+        return response()->json(['error' => 'Terjadi kesalahan server: ' . $e->getMessage()], 500);
+    }
+}
 }
