@@ -27,15 +27,16 @@
                 <div class="row g-3">
                     {{-- Guru --}}
                     <div class="col-md-6">
-                        <label for="guru_id" class="form-label">Guru</label>
+                        <label for="guru_id" class="form-label">Guru & Mata Pelajaran</label>
                         <select name="guru_id" id="guru_id" class="form-control" required>
                             <option value="">-- Pilih Guru --</option>
                             @foreach($guru as $item)
                                 <option value="{{ $item->id }}" {{ old('guru_id') == $item->id ? 'selected' : '' }}>
-                                    {{ $item->nama }}
+                                    {{ $item->nama }} - {{ $item->mapel }}
                                 </option>
                             @endforeach
                         </select>
+                        <small class="text-muted">Mata pelajaran akan otomatis sesuai dengan guru yang dipilih</small>
                     </div>
 
                     {{-- Kelas --}}
@@ -51,19 +52,6 @@
                         </select>
                     </div>
 
-                    {{-- MATA PELAJARAN --}}
-                    <div class="col-md-6">
-                        <label for="mata_pelajaran" class="form-label">Mata Pelajaran</label>
-                        <select name="mata_pelajaran" id="mata_pelajaran" class="form-control" required>
-                            <option value="">-- Pilih Mata Pelajaran --</option>
-                            @foreach($guru as $item)
-                                <option value="{{ $item->id }}" {{ old('mata_pelajaran') == $item->id ? 'selected' : '' }}>
-                                    {{ $item->mapel }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    
                     {{-- Hari --}}
                     <div class="col-md-6">
                         <label for="hari" class="form-label">Hari</label>
@@ -78,6 +66,15 @@
                                 </option>
                             @endforeach
                         </select>
+                    </div>
+
+                    {{-- Mata Pelajaran (Hidden/Display Only) --}}
+                    <div class="col-md-6">
+                        <label class="form-label">Mata Pelajaran</label>
+                        <div class="form-control bg-light" id="display_mapel">
+                            <em class="text-muted">Pilih guru terlebih dahulu</em>
+                        </div>
+                        <input type="hidden" name="mata_pelajaran" id="mata_pelajaran" value="{{ old('mata_pelajaran') }}">
                     </div>
 
                     {{-- Jam Mulai --}}
@@ -103,4 +100,29 @@
         </div>
     </div>
 </div>
+
+<script>
+document.getElementById('guru_id').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    if (selectedOption.value !== '') {
+        // Extract mata pelajaran dari teks option (format: "Nama Guru - Mata Pelajaran")
+        const text = selectedOption.text;
+        const mapel = text.split(' - ')[1];
+        
+        document.getElementById('display_mapel').textContent = mapel;
+        document.getElementById('mata_pelajaran').value = mapel;
+    } else {
+        document.getElementById('display_mapel').innerHTML = '<em class="text-muted">Pilih guru terlebih dahulu</em>';
+        document.getElementById('mata_pelajaran').value = '';
+    }
+});
+
+// Initialize on page load jika ada old value
+document.addEventListener('DOMContentLoaded', function() {
+    const guruSelect = document.getElementById('guru_id');
+    if (guruSelect.value !== '') {
+        guruSelect.dispatchEvent(new Event('change'));
+    }
+});
+</script>
 @endsection

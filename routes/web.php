@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\PembayaranController;
 use App\Http\Controllers\Siswa\SiswaController;
 use App\Http\Controllers\Siswa\AbsensiController as SiswaAbsensiController;
 use App\Http\Controllers\Guru\DashboardGuruController;
+use App\Http\Controllers\Guru\UjianHarianController;
 
 /*
 |--------------------------------------------------------------------------
@@ -101,6 +102,15 @@ Route::prefix('siswa')->name('siswa.')->middleware('role:siswa')->group(function
     // Ubah Password
     Route::get('/ubah-password', [SiswaController::class, 'showChangePasswordForm'])->name('ubah-password.form');
     Route::post('/ubah-password', [SiswaController::class, 'changePassword'])->name('ubah-password');
+
+    // Ujian Harian
+    Route::get('/ujian-harian', [App\Http\Controllers\Siswa\SiswaUjianController::class, 'index'])->name('ujian-harian.index');
+    Route::get('/ujian-harian/{id}', [App\Http\Controllers\Siswa\SiswaUjianController::class, 'show'])->name('ujian-harian.show');
+    Route::post('/ujian-harian/{id}/submit', [App\Http\Controllers\Siswa\SiswaUjianController::class, 'submit'])->name('ujian-harian.submit');
+   
+
+    
+
 });
 
 /*
@@ -131,7 +141,9 @@ Route::prefix('guru')->name('guru.')->middleware('role:guru')->group(function ()
     Route::get('/penilaian/{penilaian}/edit', [App\Http\Controllers\Guru\PenilaianController::class, 'edit'])->name('penilaian.edit');
     Route::put('/penilaian/{penilaian}', [App\Http\Controllers\Guru\PenilaianController::class, 'update'])->name('penilaian.update');
     Route::delete('/penilaian/{penilaian}', [App\Http\Controllers\Guru\PenilaianController::class, 'destroy'])->name('penilaian.destroy');
-
+    // routes/web.php
+    Route::get('/penilaian/get-siswa/{kelasId}', [App\Http\Controllers\Guru\PenilaianController::class, 'getSiswa'])
+    ->name('penilaian.getSiswa');
 
     // ujian harian 
      Route::prefix('ujian-harian')->name('penilaian.uh.')->group(function () {
@@ -144,7 +156,14 @@ Route::prefix('guru')->name('guru.')->middleware('role:guru')->group(function ()
         Route::delete('/{id}', [App\Http\Controllers\Guru\UjianHarianController::class, 'destroy'])->name('destroy');
         Route::post('/{id}/publish', [App\Http\Controllers\Guru\UjianHarianController::class, 'publish'])->name('publish');
         Route::get('/{id}/download-soal', [App\Http\Controllers\Guru\UjianHarianController::class, 'downloadSoal'])->name('download.soal');
+        Route::get('/{id}/show-soal', [App\Http\Controllers\Guru\UjianHarianController::class, 'showSoal'])->name('show.soal');
         Route::get('/{id}/download-kunci', [App\Http\Controllers\Guru\UjianHarianController::class, 'downloadKunci'])->name('download.kunci');
+    
+        Route::get('/{id}/submissions', [UjianHarianController::class, 'showSubmissions'])->name('submissions');
+    Route::get('/{ujian}/submissions/{pengumpulan}/download', [UjianHarianController::class, 'downloadJawaban'])->name('download.jawaban');
+    Route::get('/{ujian}/submissions/{pengumpulan}/show', [UjianHarianController::class, 'showJawaban'])->name('show.jawaban');
+    Route::post('/{ujian}/submissions/{pengumpulan}/nilai', [UjianHarianController::class, 'updateNilai'])->name('update.nilai');
+    
     });
 
     // Routes untuk UTS

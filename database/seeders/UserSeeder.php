@@ -39,18 +39,18 @@ class UserSeeder extends Seeder
             ]
         );
 
-        // guru
-        DB::table('users')->updateOrInsert(
-            ['email' => 'guru@pjayakarta.sch.id'],
-            [
-                'name' => 'Guru Pangeran',
-                'email' => 'guru@pjayakarta.sch.id',
-                'password' => Hash::make('password123'),
-                'role' => 'guru',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        );
+        // // guru
+        // DB::table('users')->updateOrInsert(
+        //     ['email' => 'guru@pjayakarta.sch.id'],
+        //     [
+        //         'name' => 'Guru Pangeran',
+        //         'email' => 'guru@pjayakarta.sch.id',
+        //         'password' => Hash::make('password123'),
+        //         'role' => 'guru',
+        //         'created_at' => now(),
+        //         'updated_at' => now(),
+        //     ]
+        // );
         // Tambahkan siswa lain sesuai kebutuhan
     }
 }
