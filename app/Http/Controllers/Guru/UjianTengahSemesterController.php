@@ -439,6 +439,30 @@ class UjianTengahSemesterController extends Controller
         return Storage::disk('public')->download($ujian->berkas_soal, 
             'Soal UTS - ' . $ujian->judul_ujian . '.pdf');
     }
+     public function showSoal(string $id)
+{
+    $guruId = auth()->user()->guru->id;
+    $ujian = Ujian::where('id', $id)
+                 ->where('guru_id', $guruId)
+                 ->firstOrFail();
+
+    if (!$ujian->berkas_soal) {
+        return redirect()->back()->with('error', 'Berkas soal tidak ditemukan!');
+    }
+
+    // Ambil file path
+    $filePath = storage_path('app/public/' . $ujian->berkas_soal);
+
+    if (!file_exists($filePath)) {
+        return redirect()->back()->with('error', 'File soal tidak ditemukan di server!');
+    }
+
+    // Tampilkan PDF di browser (inline)
+    return response()->file($filePath, [
+        'Content-Type' => 'application/pdf',
+        'Content-Disposition' => 'inline; filename="Soal UH - ' . $ujian->judul_ujian . '.pdf"'
+    ]);
+}
 
     /**
      * Download berkas kunci jawaban UTS
@@ -464,4 +488,62 @@ class UjianTengahSemesterController extends Controller
         return Storage::disk('public')->download($ujian->berkas_kunci_jawaban, 
             'Kunci Jawaban UTS - ' . $ujian->judul_ujian . '.pdf');
     }
+
+
+    public function showSubmissions(string $id)
+{
+    $guruId = auth()->user()->guru->id;
+
+    $ujian = Ujian::with([
+        'kelas.siswas',
+        'tipeUjian',
+        'pengumpulan.siswa'
+    ])
+    ->where('id', $id)
+    ->where('guru_id', $guruId)
+    ->firstOrFail();
+
+    if (!$ujian->kelas) {
+        return redirect()->route('guru.penilaian.uts.index')
+                         ->with('error', 'Data kelas tidak ditemukan untuk ujian ini!');
+    }
+
+    $pengumpulan = \App\Models\PengumpulanUjian::with('siswa')
+        ->where('ujian_id', $ujian->id)
+        ->get();
+
+    $semuaSiswa = $ujian->kelas->siswas ?? collect();
+
+    $pengumpulanMap = $pengumpulan->keyBy('siswa_id');
+
+    $totalSiswa = $semuaSiswa->count();
+
+$sudahKumpul = $pengumpulan->whereNotNull('berkas_jawaban')->count();
+
+$sudahDinilai = $pengumpulan->filter(function ($item) {
+    return $item->nilai !== null && $item->nilai > 0;
+})->count();
+
+$belumDinilai = $pengumpulan->filter(function ($item) {
+    return $item->nilai === null || $item->nilai <= 0;
+})->count();
+
+$belumKumpul = $totalSiswa - $sudahKumpul;
+
+
+    $statistikPengumpulan = [
+        'total_siswa' => $totalSiswa,
+        'sudah_dikumpulkan' => $sudahKumpul,
+        'belum_dikumpulkan' => $belumKumpul,
+        'sudah_dinilai' => $sudahDinilai,
+        'belum_dinilai' => $belumDinilai,
+    ];
+
+    return view('guru.penilaian.uts-submission', compact(
+        'ujian',
+        'statistikPengumpulan',
+        'semuaSiswa',
+        'pengumpulanMap'
+    ));
+}
 }

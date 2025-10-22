@@ -90,7 +90,7 @@ public function submit(Request $request, $id)
         ]
     );
 
-    return redirect()->route('siswa.ujian.uh-show', $ujian->id)->with('success', 'Jawaban berhasil dikumpulkan!');
+    return redirect()->route('ujian-harian.show', $ujian->id)->with('success', 'Jawaban berhasil dikumpulkan!');
 }
 
 }

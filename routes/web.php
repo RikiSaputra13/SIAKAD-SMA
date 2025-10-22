@@ -63,16 +63,11 @@ Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function
     // 🔥 Tambahkan Filter Absensi
     Route::get('absensi/filter', [AdminAbsensiController::class, 'filter'])->name('absensi.filter');
 
-    // CRUD Absensi (tanpa show)
     Route::resource('absensi', AdminAbsensiController::class)->except(['show']);
-
-    // Token Absensi
     Route::post('generate-token', [TokenController::class, 'generateToken'])->name('generate-token');
 
-    // CRUD Pembayaran (TANPA SHOW)
     Route::resource('pembayaran', PembayaranController::class)->except(['show']);
     
-    // 🔥 TAMBAHAN: Rekap & Export Pembayaran
     Route::post('pembayaran/rekap', [PembayaranController::class, 'rekap'])->name('pembayaran.rekap');
     Route::get('pembayaran/cetak-pdf', [PembayaranController::class, 'cetakPdf'])->name('pembayaran.cetak-pdf');
     Route::get('pembayaran/cetak-excel', [PembayaranController::class, 'cetakExcel'])->name('pembayaran.cetak-excel');
@@ -171,13 +166,19 @@ Route::prefix('ujian-tengah-semester')->name('penilaian.uts.')->group(function (
     Route::get('/', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'index'])->name('index');
     Route::get('/create', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'create'])->name('create');
     Route::post('/store', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'store'])->name('store');
-    Route::get('/{id}', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'show'])->name('show');
+    Route::get('/{id}', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'showSoal'])->name('show');
     Route::get('/{id}/edit', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'edit'])->name('edit');
     Route::put('/{id}', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'update'])->name('update');
     Route::delete('/{id}', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'destroy'])->name('destroy');
     Route::post('/{id}/publish', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'publish'])->name('publish');
     Route::get('/{id}/download-soal', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'downloadSoal'])->name('download.soal');
     Route::get('/{id}/download-kunci', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'downloadKunci'])->name('download.kunci');
+
+    Route::get('/{id}/submissions', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'showSubmissions'])->name('submissions');
+    Route::get('/{ujian}/submissions/{pengumpulan}/download', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'downloadJawaban'])->name('download.jawaban');
+    Route::get('/{ujian}/submissions/{pengumpulan}/show', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'showJawaban'])->name('show.jawaban');
+    Route::post('/{ujian}/submissions/{pengumpulan}/nilai', [App\Http\Controllers\Guru\UjianTengahSemesterController::class, 'updateNilai'])->name('update.nilai');
+
 });
 
 // Routes untuk UAS

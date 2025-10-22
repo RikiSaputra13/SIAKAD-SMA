@@ -155,7 +155,7 @@
                                     <th>Judul Ujian</th>
                                     <th>Kelas</th>
                                     <th>Mata Pelajaran</th>
-                                    <th width="120">Berkas Soal</th>
+                                    <th>Berkas Soal</th>
                                     <th width="100">Total Nilai</th>
                                     <th width="180">Waktu Pelaksanaan</th>
                                     <th width="100">Status</th>
@@ -176,11 +176,15 @@
                                             <span class="badge bg-secondary">{{ $item->kelas->nama_kelas }}</span>
                                         </td>
                                         <td>{{ $item->mata_pelajaran }}</td>
-                                        <td class="text-center">
+                                        <td class="text-center flex">
                                             @if($item->berkas_soal)
                                                 <a href="{{ route('guru.penilaian.uts.download.soal', $item->id) }}" 
                                                    class="btn btn-sm btn-outline-info" title="Download Soal">
                                                     <i class="fas fa-download me-1"></i>PDF
+                                                </a>
+                                                <a href="{{ route('guru.penilaian.uts.show', $item->id) }}" 
+                                                   class="btn btn-sm btn-outline-info" title="Lihat Soal">
+                                                    <i class="fas fa-eye me-1"></i>Lihat Soal
                                                 </a>
                                             @else
                                                 <span class="badge bg-warning">Tidak ada</span>
@@ -202,10 +206,14 @@
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group">
-                                                <a href="{{ route('guru.penilaian.uts.show', $item->id) }}" 
+                                                {{-- <a href="{{ route('guru.penilaian.uts.show', $item->id) }}" 
                                                    class="btn btn-info" title="Detail">
                                                     <i class="fas fa-eye"></i>
-                                                </a>
+                                                </a> --}}
+                                                <a href="{{ route('guru.penilaian.uts.submissions', $item->id) }}"
+                                                        class="btn btn-info" title="Lihat Pengumpulan">
+                                                        <i class="fas fa-list-check"></i>
+                                                    </a>
                                                 <a href="{{ route('guru.penilaian.uts.edit', $item->id) }}" 
                                                    class="btn btn-warning" title="Edit">
                                                     <i class="fas fa-edit"></i>
