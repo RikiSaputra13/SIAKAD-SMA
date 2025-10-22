@@ -17,8 +17,18 @@ class SiswaUjianController extends Controller
 {
     $siswa = Auth::user()->siswa;
 
-    // Filter berdasarkan tipe ujian jika ada
-    $tipeUjianId = $request->input('tipe_ujian_id');
+    // Cari tipe ujian dengan kode 'uh' (Ujian Harian) sebagai default
+    $tipeUjianUH = \App\Models\TipeUjian::where('kode', 'uh')->first();
+
+    // Jika tipe UH tidak ada, kembalikan koleksi kosong
+    if (!$tipeUjianUH) {
+        $ujian = collect();
+        $tipeUjianOptions = \App\Models\TipeUjian::pluck('nama', 'id');
+        return view('siswa.ujian.uh-index', compact('ujian', 'tipeUjianOptions'))->with('error', 'Tipe ujian "uh" tidak ditemukan.');
+    }
+
+    // Ambil filter dari request, jika tidak ada gunakan UH sebagai default
+    $tipeUjianId = $request->input('tipe_ujian_id', $tipeUjianUH->id);
 
     $ujian = Ujian::where('kelas_id', $siswa->kelas_id)
         ->where('status', 'published')
@@ -34,7 +44,7 @@ class SiswaUjianController extends Controller
         ->orderBy('waktu_mulai', 'desc')
         ->get();
 
-    $tipeUjianOptions = \App\Models\TipeUjian::pluck('nama', 'id'); // Untuk dropdown filter
+    $tipeUjianOptions = \App\Models\TipeUjian::pluck('nama', 'id');
 
     return view('siswa.ujian.uh-index', compact('ujian', 'tipeUjianOptions', 'tipeUjianId'));
 }

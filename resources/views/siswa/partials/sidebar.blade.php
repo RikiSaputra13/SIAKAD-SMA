@@ -62,21 +62,7 @@
                             <a href="{{ route('siswa.ujian-harian.index') }}"
                                 class="nav-link text-white {{ request()->routeIs('siswa.ujian-harian.index') ? 'active' : '' }}">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p>Ujian Harian</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="#"
-                                class="nav-link text-white {{ request()->routeIs('siswa.ujian.tengah-semester') ? 'active' : '' }}">
-                                <i class="far fa-circle nav-icon"></i>
-                                <p>UTS</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="#"
-                                class="nav-link text-white {{ request()->routeIs('siswa.ujian.akhir-semester') ? 'active' : '' }}">
-                                <i class="far fa-circle nav-icon"></i>
-                                <p>UAS</p>
+                                <p>Ujian</p>
                             </a>
                         </li>
                     </ul>
