@@ -30,14 +30,14 @@ class DashboardGuruController extends Controller
         // Total kelas yang diampu guru (sebagai wali kelas)
         $totalKelasDiampu = Kelas::where('wali_kelas_id', $guruId)->count();
 
-        // Total jadwal mengajar guru - PERBAIKAN: gunakan guru_id bukan id
+        // Total jadwal mengajar guru
         $totalJadwalMengajar = Jadwal::where('guru_id', $guruId)->count();
 
         // Total siswa di semua kelas yang diampu guru sebagai wali kelas
         $kelasIds = Kelas::where('wali_kelas_id', $guruId)->pluck('id');
         $totalSiswa = Siswa::whereIn('kelas_id', $kelasIds)->count();
 
-        // Total absensi hari ini yang diinput guru - PERBAIKAN: sesuaikan dengan relasi yang benar
+        // Total absensi hari ini yang diinput guru
         $today = now()->toDateString();
         $totalAbsensiHariIni = Absensi::whereDate('tanggal', $today)
             ->whereIn('siswa_id', function($query) use ($kelasIds) {
@@ -47,7 +47,7 @@ class DashboardGuruController extends Controller
             })
             ->count();
 
-        // Jadwal mengajar hari ini - PERBAIKAN: gunakan guru_id dan konversi hari
+        // Jadwal mengajar hari ini
         $hariIni = $this->getHariIndonesia(now()->format('l'));
         $jadwalHariIni = Jadwal::with(['kelas', 'guru'])
             ->where('guru_id', $guruId)
@@ -90,7 +90,9 @@ class DashboardGuruController extends Controller
         return $hariMap[$hariEnglish] ?? $hariEnglish;
     }
 
-    public function jadwalGuru(Request $request) 
+
+
+       public function jadwalGuru(Request $request) 
     {
         // Ambil guru yang sedang login
         $user = auth()->user();
@@ -103,16 +105,33 @@ class DashboardGuruController extends Controller
         $query = Jadwal::with(['kelas', 'guru'])
                     ->where('guru_id', $guru->id);
         
-        // Optional: Filter berdasarkan kelas jika diperlukan
+        // Filter berdasarkan kelas jika diperlukan
         if ($request->has('kelas_id') && $request->kelas_id != '') {
             $query->where('kelas_id', $request->kelas_id);
         }
+
+        // Filter berdasarkan hari jika ada
+        if ($request->has('hari') && $request->hari != '') {
+            $query->where('hari', $request->hari);
+        }
         
-        $jadwals = $query->orderBy('hari')
-                        ->orderBy('jam_mulai')
-                        ->get();
+        $jadwals = $query->orderByRaw("
+            CASE 
+                WHEN hari = 'Senin' THEN 1
+                WHEN hari = 'Selasa' THEN 2
+                WHEN hari = 'Rabu' THEN 3
+                WHEN hari = 'Kamis' THEN 4
+                WHEN hari = 'Jumat' THEN 5
+                WHEN hari = 'Sabtu' THEN 6
+                WHEN hari = 'Minggu' THEN 7
+            END
+        ")->orderBy('jam_mulai')->get();
+        
         $kelas = Kelas::all();
         
-        return view('guru.jadwal.index', compact('jadwals', 'kelas'));
+        // Kirim juga hari ini untuk keperluan view
+        $hariIni = $this->getHariIndonesia(now()->format('l'));
+        
+        return view('guru.jadwal.index', compact('jadwals', 'kelas', 'hariIni'));
     }
 }

@@ -12,15 +12,14 @@ class GuruSiswaController extends Controller
 {
     public function index()
     {
-        $siswas = Siswa::with(['kelas', 'user'])->get();
+        $siswas = Siswa::with(['kelas', 'user'])->paginate(10); 
         return view('guru.siswa.index', compact('siswas'));
     }
     
-     public function absensiSiswa()
+    public function absensiSiswa()
     {
-        $absensis = Absensi::with('siswa.kelas')->latest()->get();
-        $kelas = Kelas::all(); // untuk filter di view
+        $absensis = Absensi::with('siswa.kelas')->latest()->paginate(10);
+        $kelas = Kelas::all(); 
         return view('guru.siswa.absensi', compact('absensis', 'kelas'));
     }
-    
 }

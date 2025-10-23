@@ -364,7 +364,7 @@ public function create()
             '2' => 'Semester 2'
         ];
 
-        return view('guru.penilaian.edit', compact(
+        return view('guru.penilaian.edit-nilai', compact(
             'penilaian',
             'kelasOptions',
             'mapelOptions',
