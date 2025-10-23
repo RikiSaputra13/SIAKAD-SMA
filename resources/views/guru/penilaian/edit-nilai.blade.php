@@ -65,6 +65,9 @@
                     <form method="POST" action="{{ route('guru.penilaian.update', $penilaian->id) }}">
                         @csrf
                         @method('PUT')
+
+                        <input type="hidden" name="siswa_id" value="{{ $penilaian->siswa_id }}">
+                        <input type="hidden" name="kelas_id" value="{{ $penilaian->kelas_id }}">
                         
                         <div class="card border-0 shadow-sm mb-4">
                             <div class="card-header bg-light border-0 py-3">
