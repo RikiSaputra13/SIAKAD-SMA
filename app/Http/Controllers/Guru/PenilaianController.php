@@ -20,7 +20,7 @@ class PenilaianController extends Controller
      */
     public function index(Request $request)
     {
-        $guruId = auth()->user();
+        $guruId = auth()->user()->guru->id;
         
         // Ambil kelas yang diajar oleh guru ini
         $kelasOptions = Jadwal::where('guru_id', $guruId)
@@ -209,53 +209,118 @@ public function create()
     /**
      * Store a newly created resource in storage.
      */
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'siswa_id' => 'required|exists:siswas,id',
+    //         'kelas_id' => 'required|exists:kelas,id',
+    //         'mata_pelajaran' => 'required|string|max:255',
+    //         'tahun_ajaran' => 'required|integer',
+    //         'semester' => 'required|in:1,2',
+    //         'nilai_uh' => 'required|numeric|min:0|max:100',
+    //         'nilai_uts' => 'required|numeric|min:0|max:100',
+    //         'nilai_uas' => 'required|numeric|min:0|max:100',
+    //         'nilai_tugas' => 'required|numeric|min:0|max:100',
+    //         'nilai_praktik' => 'nullable|numeric|min:0|max:100',
+    //         'deskripsi' => 'nullable|string'
+    //     ]);
+
+    //     // Hitung nilai akhir (contoh perhitungan)
+    //     $nilaiAkhir = (
+    //         ($request->nilai_uh * 0.2) +
+    //         ($request->nilai_uts * 0.3) +
+    //         ($request->nilai_uas * 0.4) +
+    //         ($request->nilai_tugas * 0.1)
+    //     );
+
+    //     // Tentukan predikat
+    //     $predikat = $this->getPredikat($nilaiAkhir);
+
+    //     Penilaian::create([
+    //         'siswa_id' => $request->siswa_id,
+    //         'kelas_id' => $request->kelas_id,
+    //         'guru_id' => auth()->user()->guru->id,
+    //         'mata_pelajaran' => $request->mata_pelajaran,
+    //         'tahun_ajaran' => $request->tahun_ajaran,
+    //         'semester' => $request->semester,
+    //         'nilai_uh' => $request->nilai_uh,
+    //         'nilai_uts' => $request->nilai_uts,
+    //         'nilai_uas' => $request->nilai_uas,
+    //         'nilai_tugas' => $request->nilai_tugas,
+    //         'nilai_praktik' => $request->nilai_praktik ?? 0,
+    //         'nilai_akhir' => $nilaiAkhir,
+    //         'predikat' => $predikat,
+    //         'deskripsi' => $request->deskripsi
+    //     ]);
+
+    //     return redirect()->route('guru.penilaian.list')
+    //                      ->with('success', 'Data penilaian berhasil ditambahkan!');
+    // }
+
+
     public function store(Request $request)
-    {
-        $request->validate([
-            'siswa_id' => 'required|exists:siswas,id',
-            'kelas_id' => 'required|exists:kelas,id',
-            'mata_pelajaran' => 'required|string|max:255',
-            'tahun_ajaran' => 'required|integer',
-            'semester' => 'required|in:1,2',
-            'nilai_uh' => 'required|numeric|min:0|max:100',
-            'nilai_uts' => 'required|numeric|min:0|max:100',
-            'nilai_uas' => 'required|numeric|min:0|max:100',
-            'nilai_tugas' => 'required|numeric|min:0|max:100',
-            'nilai_praktik' => 'nullable|numeric|min:0|max:100',
-            'deskripsi' => 'nullable|string'
-        ]);
+{
+    $request->validate([
+        'kelas_id' => 'required|exists:kelas,id',
+        'mata_pelajaran' => 'required|string|max:255',
+        'tahun_ajaran' => 'required|integer',
+        'semester' => 'required|in:1,2',
+        'siswa_id' => 'required|array',
+        'siswa_id.*' => 'exists:siswas,id',
+        'nilai_uh' => 'required|array',
+        'nilai_uh.*' => 'required|numeric|min:0|max:100',
+        'nilai_uts' => 'required|array',
+        'nilai_uts.*' => 'required|numeric|min:0|max:100',
+        'nilai_uas' => 'required|array',
+        'nilai_uas.*' => 'required|numeric|min:0|max:100',
+        'nilai_tugas' => 'required|array',
+        'nilai_tugas.*' => 'required|numeric|min:0|max:100',
+    ]);
 
-        // Hitung nilai akhir (contoh perhitungan)
-        $nilaiAkhir = (
-            ($request->nilai_uh * 0.2) +
-            ($request->nilai_uts * 0.3) +
-            ($request->nilai_uas * 0.4) +
-            ($request->nilai_tugas * 0.1)
-        );
+    try {
+        DB::beginTransaction();
 
-        // Tentukan predikat
-        $predikat = $this->getPredikat($nilaiAkhir);
+        foreach ($request->siswa_id as $index => $siswaId) {
+            // Hitung nilai akhir
+            $nilaiAkhir = (
+                ($request->nilai_uh[$siswaId] * 0.2) +
+                ($request->nilai_uts[$siswaId] * 0.3) +
+                ($request->nilai_uas[$siswaId] * 0.4) +
+                ($request->nilai_tugas[$siswaId] * 0.1)
+            );
 
-        Penilaian::create([
-            'siswa_id' => $request->siswa_id,
-            'kelas_id' => $request->kelas_id,
-            'guru_id' => auth()->user()->guru->id,
-            'mata_pelajaran' => $request->mata_pelajaran,
-            'tahun_ajaran' => $request->tahun_ajaran,
-            'semester' => $request->semester,
-            'nilai_uh' => $request->nilai_uh,
-            'nilai_uts' => $request->nilai_uts,
-            'nilai_uas' => $request->nilai_uas,
-            'nilai_tugas' => $request->nilai_tugas,
-            'nilai_praktik' => $request->nilai_praktik ?? 0,
-            'nilai_akhir' => $nilaiAkhir,
-            'predikat' => $predikat,
-            'deskripsi' => $request->deskripsi
-        ]);
+            // Tentukan predikat
+            $predikat = $this->getPredikat($nilaiAkhir);
+
+            Penilaian::create([
+                'siswa_id' => $siswaId,
+                'kelas_id' => $request->kelas_id,
+                'guru_id' => auth()->user()->guru->id,
+                'mata_pelajaran' => $request->mata_pelajaran,
+                'tahun_ajaran' => $request->tahun_ajaran,
+                'semester' => $request->semester,
+                'nilai_uh' => $request->nilai_uh[$siswaId],
+                'nilai_uts' => $request->nilai_uts[$siswaId],
+                'nilai_uas' => $request->nilai_uas[$siswaId],
+                'nilai_tugas' => $request->nilai_tugas[$siswaId],
+                'nilai_praktik' => 0, // Default value
+                'nilai_akhir' => $nilaiAkhir,
+                'predikat' => $predikat,
+                'deskripsi' => 'Deskripsi nilai untuk siswa'
+            ]);
+        }
+
+        DB::commit();
 
         return redirect()->route('guru.penilaian.list')
-                         ->with('success', 'Data penilaian berhasil ditambahkan!');
+                         ->with('success', 'Data penilaian berhasil disimpan!');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return redirect()->back()
+                         ->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
+                         ->withInput();
     }
+}
 
     /**
      * Display the specified resource.
@@ -299,7 +364,7 @@ public function create()
             '2' => 'Semester 2'
         ];
 
-        return view('guru.penilaian.edit', compact(
+        return view('guru.penilaian.edit-nilai', compact(
             'penilaian',
             'kelasOptions',
             'mapelOptions',

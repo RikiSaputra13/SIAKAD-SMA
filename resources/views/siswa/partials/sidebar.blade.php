@@ -80,13 +80,13 @@
                     </a>
                     <ul class="nav nav-treeview">
                         <li class="nav-item">
-                            <a href="#"
-                                class="nav-link text-white {{ request()->routeIs('siswa.nilai.harian') ? 'active' : '' }}">
+                            <a href="{{ route('siswa.nilai.index') }}"
+                                class="nav-link text-white {{ request()->routeIs('siswa.nilai.index') ? 'active' : '' }}">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p>Nilai Harian</p>
+                                <p>Nilai </p>
                             </a>
                         </li>
-                        <li class="nav-item">
+                        {{-- <li class="nav-item">
                             <a href="#"
                                 class="nav-link text-white {{ request()->routeIs('siswa.nilai.uts') ? 'active' : '' }}">
                                 <i class="far fa-circle nav-icon"></i>
@@ -106,7 +106,7 @@
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Nilai Rapor</p>
                             </a>
-                        </li>
+                        </li> --}}
                     </ul>
                 </li>
 
