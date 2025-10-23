@@ -14,6 +14,7 @@ use App\Http\Controllers\Siswa\SiswaController;
 use App\Http\Controllers\Siswa\AbsensiController as SiswaAbsensiController;
 use App\Http\Controllers\Guru\DashboardGuruController;
 use App\Http\Controllers\Guru\UjianHarianController;
+use App\Http\Controllers\Siswa\SiswaNilaiController;
 
 /*
 |--------------------------------------------------------------------------
@@ -102,6 +103,9 @@ Route::prefix('siswa')->name('siswa.')->middleware('role:siswa')->group(function
     Route::get('/ujian-harian', [App\Http\Controllers\Siswa\SiswaUjianController::class, 'index'])->name('ujian-harian.index');
     Route::get('/ujian-harian/{id}', [App\Http\Controllers\Siswa\SiswaUjianController::class, 'show'])->name('ujian-harian.show');
     Route::post('/ujian-harian/{id}/submit', [App\Http\Controllers\Siswa\SiswaUjianController::class, 'submit'])->name('ujian-harian.submit');
+
+    // Nilai
+    Route::get('/nilai', [SiswaNilaiController::class, 'index'])->name('nilai.index');
    
 
     
