@@ -16,11 +16,24 @@ class SiswaController extends Controller
     /**
      * Tampilkan daftar siswa.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $siswas = Siswa::with(['kelas', 'user'])->get();
-        return view('admin.siswa.index', compact('siswas'));
+        // Ambil semua kelas untuk dropdown filter
+        $kelas = Kelas::all();
+
+        // Ambil nilai filter jika ada
+        $kelas_id = $request->kelas_id;
+
+        // Query siswa dengan relasi
+        $siswas = Siswa::with(['kelas', 'user'])
+            ->when($kelas_id, function($query) use ($kelas_id) {
+                $query->where('kelas_id', $kelas_id);
+            })
+            ->get();
+
+        return view('admin.siswa.index', compact('siswas', 'kelas', 'kelas_id'));
     }
+
 
     /**
      * Tampilkan formulir untuk membuat siswa baru.

@@ -22,8 +22,7 @@ class AbsensiController extends Controller
                 ->with('error', 'Data siswa tidak ditemukan.');
         }
 
-        $absensis = Absensi::where('siswa_id', $siswa->id)->latest()->get();
-        return view('siswa.absensi.index', compact('absensis'));
+        return view('siswa.absensi.index', compact('siswa'));
     }
 
     public function history()
@@ -35,21 +34,31 @@ class AbsensiController extends Controller
                 ->with('error', 'Data siswa tidak ditemukan.');
         }
 
-        $absensis = Absensi::where('siswa_id', $siswa->id)->latest()->get();
-        return view('siswa.absensi.history', compact('absensis'));
+        $absensis = Absensi::with(['guru', 'token'])
+                    ->where('siswa_id', $siswa->id)
+                    ->orderBy('tanggal', 'desc')
+                    ->orderBy('waktu', 'desc')
+                    ->get();
+                    
+        return view('siswa.absensi.history', compact('absensis', 'siswa'));
+    }
+
+    // Tambahkan method untuk redirect ke dashboard
+    public function dashboard()
+    {
+        return redirect()->route('siswa.dashboard');
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'token' => 'required|string|max:255',
-            'keterangan' => 'nullable|string|max:255',
+            'token' => 'required|string|size:6'
         ]);
 
         $userId = Auth::id();
         $userEmail = Auth::user()->email;
 
-        \Log::info('Mulai proses absensi', [
+        \Log::info('Mulai proses absensi dengan token guru', [
             'user_id' => $userId,
             'email' => $userEmail,
             'token' => $request->token,
@@ -65,91 +74,118 @@ class AbsensiController extends Controller
 
         \Log::info('Data siswa ditemukan', [
             'siswa_id' => $siswa->id,
-            'nama' => $siswa->nama
+            'nama' => $siswa->nama,
+            'kelas_id' => $siswa->kelas_id
         ]);
 
-        $token = Token::where('token_kode', $request->token)
-                      ->where('is_used', false)
-                      ->where('expired_at', '>', now())
-                      ->first();
+        // Cek token valid dari guru
+        $token = strtoupper($request->token);
+        $validToken = Token::with(['guru', 'kelas'])
+                        ->where('token_kode', $token)
+                        ->where('kelas_id', $siswa->kelas_id)
+                        ->whereDate('attendance_date', today())
+                        ->where('expired_at', '>', now())
+                        ->where('is_used', false)
+                        ->first();
 
-        if (!$token) {
+        if (!$validToken) {
             \Log::warning('Token tidak valid', [
                 'user_id' => $userId,
-                'token' => $request->token
+                'token' => $token,
+                'kelas_siswa' => $siswa->kelas_id
             ]);
-            return back()->withErrors(['token' => 'Token tidak valid, sudah digunakan, atau kadaluarsa.'])
-                         ->withInput();
+            return back()->with('error', 'Token tidak valid, sudah kadaluarsa, atau bukan untuk kelas Anda!');
         }
 
         try {
-            // Cek absensi hari ini
+            // Cek apakah sudah absen untuk sesi ini (token yang sama)
             $existingAbsensi = Absensi::where('siswa_id', $siswa->id)
-                                      ->whereDate('tanggal', today())
-                                      ->first();
+                                ->where('token_id', $validToken->id)
+                                ->whereDate('tanggal', today())
+                                ->first();
 
             if ($existingAbsensi) {
-                \Log::warning('Absensi sudah ada hari ini', [
+                \Log::warning('Sudah absen untuk sesi ini', [
                     'siswa_id' => $siswa->id,
+                    'token_id' => $validToken->id,
                     'tanggal' => today()->toDateString()
                 ]);
-                return back()->with('error', 'Anda sudah melakukan absensi hari ini.');
+                return back()->with('error', 'Anda sudah melakukan absensi untuk pelajaran ini!');
             }
 
-            // Simpan absensi
+            // Tentukan status (hadir/terlambat)
+            $currentTime = now();
+            $jamMulai = \Carbon\Carbon::createFromFormat('H:i', $validToken->jam_mulai);
+            $status = $currentTime->gt($jamMulai->addMinutes(15)) ? 'terlambat' : 'hadir';
+
+            // Simpan absensi dengan data lengkap
             $absensi = Absensi::create([
                 'siswa_id' => $siswa->id,
-                'tanggal' => now(),
-                'status' => 'Hadir',
-                'keterangan' => $request->keterangan,
+                'guru_id' => $validToken->guru_id,
+                'mapel_id' => $validToken->mapel_id,
+                'token_id' => $validToken->id,
+                'tanggal' => today(),
+                'waktu' => now()->format('H:i:s'),
+                'status' => $status,
+                'token_used' => $token,
+                'keterangan' => 'Absensi menggunakan token - ' . $validToken->guru->nama,
+                'sesi' => $validToken->jam_mulai . '-' . $validToken->jam_selesai
             ]);
 
-            \Log::info('Absensi berhasil dibuat', [
+            \Log::info('Absensi berhasil dibuat dengan sistem token guru', [
                 'absensi_id' => $absensi->id,
-                'siswa_id' => $siswa->id
+                'siswa_id' => $siswa->id,
+                'guru_id' => $validToken->guru_id,
+                'token_id' => $validToken->id,
+                'status' => $status
             ]);
 
-            // Update token
-            $token->update(['is_used' => true]);
+            // Update jumlah absensi di token (tidak mark as used agar bisa dipakai siswa lain)
+            // Token tetap aktif untuk siswa lain di kelas yang sama
 
             // Kirim notifikasi WhatsApp jika ada no HP orang tua
-           // Kirim notifikasi WhatsApp jika ada no HP orang tua
-if ($siswa->tlp_orang_tua) {
-    $nomorHP = preg_replace('/^0/', '62', $siswa->tlp_orang_tua);
-    $pesan = "Yth. Orang tua/wali dari {$siswa->nama}, Ananda telah melakukan absensi dengan status 'Hadir' pada " . now()->format('d F Y') . ".";
+            if ($siswa->tlp_orang_tua) {
+                $nomorHP = preg_replace('/^0/', '62', $siswa->tlp_orang_tua);
+                $pesan = "Yth. Orang tua/wali dari {$siswa->nama}, Ananda telah melakukan absensi dengan status '{$status}' pada " . now()->format('d F Y H:i') . " untuk pelajaran dengan {$validToken->guru->nama}.";
 
-    if (env('WHATSAPP_API_URL') && env('WHATSAPP_API_KEY')) {
-        $response = Http::withHeaders([
-            'Authorization' => env('WHATSAPP_API_KEY'),
-        ])->post(env('WHATSAPP_API_URL'), [
-            'target'  => $nomorHP,
-            'message' => $pesan,
-        ]);
+                if (env('WHATSAPP_API_URL') && env('WHATSAPP_API_KEY')) {
+                    $response = Http::withHeaders([
+                        'Authorization' => env('WHATSAPP_API_KEY'),
+                    ])->post(env('WHATSAPP_API_URL'), [
+                        'target'  => $nomorHP,
+                        'message' => $pesan,
+                    ]);
 
-        if ($response->failed()) {
-            \Log::error('Gagal kirim WhatsApp', [
-                'siswa_id' => $siswa->id,
-                'status' => $response->status(),
-                'body' => $response->body()
-            ]);
-        } else {
-            \Log::info('WhatsApp berhasil dikirim', [
-                'siswa_id' => $siswa->id,
-                'response' => $response->json()
-            ]);
-        }
-    } else {
-        \Log::warning('WhatsApp API belum dikonfigurasi');
-    }
-}
+                    if ($response->failed()) {
+                        \Log::error('Gagal kirim WhatsApp', [
+                            'siswa_id' => $siswa->id,
+                            'status' => $response->status(),
+                            'body' => $response->body()
+                        ]);
+                    } else {
+                        \Log::info('WhatsApp berhasil dikirim', [
+                            'siswa_id' => $siswa->id,
+                            'response' => $response->json()
+                        ]);
+                    }
+                } else {
+                    \Log::warning('WhatsApp API belum dikonfigurasi');
+                }
+            }
 
-            return back()->with('success', 'Absensi berhasil direkam.');
+            return redirect()->route('siswa.dashboard')
+                ->with('success', 
+                    'Absensi berhasil! ' . 
+                    $validToken->guru->nama . 
+                    ($status == 'terlambat' ? ' (Terlambat)' : '')
+                );
 
         } catch (\Exception $e) {
-            \Log::error('Error absensi', [
+            \Log::error('Error absensi dengan token guru', [
                 'user_id' => $userId,
                 'siswa_id' => $siswa->id ?? null,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return back()->with('error', 'Terjadi kesalahan saat menyimpan absensi: ' . $e->getMessage());
         }

@@ -118,13 +118,6 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('siswa.pembayaran.index') }}"
-                        class="nav-link text-white {{ request()->routeIs('siswa.pembayaran.*') ? 'active' : '' }}">
-                        <i class="nav-icon fas fa-credit-card fa-lg"></i>
-                        <p>Lihat Pembayaran</p>
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a href="{{ route('siswa.ubah-password.form') }}"
                         class="nav-link text-white {{ request()->routeIs('siswa.ubah-password.*') ? 'active' : '' }}">
                         <i class="nav-icon fas fa-key fa-lg"></i>

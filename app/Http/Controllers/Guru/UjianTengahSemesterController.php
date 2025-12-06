@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Ujian;
 use App\Models\TipeUjian;
+use App\Models\PengumpulanUjian;
 use App\Models\Jadwal;
 use App\Models\Kelas;
 use Illuminate\Support\Facades\Storage;
@@ -274,6 +275,9 @@ class UjianTengahSemesterController extends Controller
     /**
      * Update the specified ujian UTS.
      */
+    /**
+ * Update the specified ujian UTS.
+ */
     public function update(Request $request, string $id)
     {
         $user = auth()->user();
@@ -285,14 +289,15 @@ class UjianTengahSemesterController extends Controller
 
         $guruId = $guru->id;
         $ujian = Ujian::where('id', $id)
-                     ->where('guru_id', $guruId)
-                     ->firstOrFail();
+                    ->where('guru_id', $guruId)
+                    ->firstOrFail();
 
         // Pastikan ini ujian UTS
         if ($ujian->tipeUjian->kode !== 'pts') {
             abort(404, 'Ujian bukan Ujian Tengah Semester');
         }
 
+        // Validasi
         $request->validate([
             'judul_ujian' => 'required|string|max:255',
             'kelas_id' => 'required|exists:kelas,id',
@@ -305,48 +310,120 @@ class UjianTengahSemesterController extends Controller
             'batas_pengumpulan' => 'nullable|date|after:waktu_mulai',
             'instruksi' => 'nullable|string',
             'deskripsi' => 'nullable|string',
-            'status' => 'required|in:draft,published,completed'
+            // Hapus validasi status karena kita akan menentukannya berdasarkan action
         ]);
 
-        // Update berkas soal jika ada
+        // Tentukan status berdasarkan action
+        $status = $ujian->status; // Default: tetap status saat ini
+        
+        if ($request->has('action')) {
+            if ($request->action === 'publish') {
+                $status = 'published';
+            } elseif ($request->action === 'draft') {
+                $status = 'draft';
+            } elseif ($request->action === 'update') {
+                $status = 'published'; // atau tetap status sebelumnya
+            }
+        }
+
+        // Handle file upload untuk berkas soal
+        $berkasSoalPath = $ujian->berkas_soal;
         if ($request->hasFile('berkas_soal')) {
-            // Hapus file lama
-            if ($ujian->berkas_soal) {
+            $fileSoal = $request->file('berkas_soal');
+            
+            // Validasi file soal
+            if (!$fileSoal->isValid()) {
+                return redirect()->back()->with('error', 'File soal tidak valid!');
+            }
+
+            // Hapus file lama jika ada
+            if ($ujian->berkas_soal && Storage::disk('public')->exists($ujian->berkas_soal)) {
                 Storage::disk('public')->delete($ujian->berkas_soal);
             }
-            $berkasSoalPath = $request->file('berkas_soal')->store('ujian/uts/soal', 'public');
-        } else {
-            $berkasSoalPath = $ujian->berkas_soal;
+
+            // Simpan file baru
+            $berkasSoalPath = $fileSoal->store('ujian/uts/soal', 'public');
+            
+            // Log untuk debugging
+            \Log::info('Berkas soal UTS diupdate', [
+                'ujian_id' => $ujian->id,
+                'file_path' => $berkasSoalPath,
+                'file_size' => $fileSoal->getSize(),
+                'original_name' => $fileSoal->getClientOriginalName()
+            ]);
         }
 
-        // Update berkas kunci jawaban jika ada
+        // Handle file upload untuk berkas kunci jawaban
+        $berkasKunciPath = $ujian->berkas_kunci_jawaban;
         if ($request->hasFile('berkas_kunci_jawaban')) {
-            // Hapus file lama
-            if ($ujian->berkas_kunci_jawaban) {
+            $fileKunci = $request->file('berkas_kunci_jawaban');
+            
+            // Validasi file kunci jawaban
+            if (!$fileKunci->isValid()) {
+                return redirect()->back()->with('error', 'File kunci jawaban tidak valid!');
+    }
+
+            // Hapus file lama jika ada
+            if ($ujian->berkas_kunci_jawaban && Storage::disk('public')->exists($ujian->berkas_kunci_jawaban)) {
                 Storage::disk('public')->delete($ujian->berkas_kunci_jawaban);
             }
-            $berkasKunciPath = $request->file('berkas_kunci_jawaban')->store('ujian/uts/kunci-jawaban', 'public');
-        } else {
-            $berkasKunciPath = $ujian->berkas_kunci_jawaban;
+
+            // Simpan file baru
+            $berkasKunciPath = $fileKunci->store('ujian/uts/kunci-jawaban', 'public');
+            
+            // Log untuk debugging
+            \Log::info('Berkas kunci jawaban UTS diupdate', [
+                'ujian_id' => $ujian->id,
+                'file_path' => $berkasKunciPath,
+                'file_size' => $fileKunci->getSize(),
+                'original_name' => $fileKunci->getClientOriginalName()
+            ]);
         }
 
-        $ujian->update([
-            'kelas_id' => $request->kelas_id,
-            'mata_pelajaran' => $request->mata_pelajaran,
-            'judul_ujian' => $request->judul_ujian,
-            'deskripsi' => $request->deskripsi,
-            'berkas_soal' => $berkasSoalPath,
-            'berkas_kunci_jawaban' => $berkasKunciPath,
-            'total_nilai' => $request->total_nilai,
-            'waktu_mulai' => $request->waktu_mulai,
-            'waktu_selesai' => $request->waktu_selesai,
-            'batas_pengumpulan' => $request->batas_pengumpulan,
-            'instruksi' => $request->instruksi,
-            'status' => $request->status
-        ]);
+        // Update data ujian
+        try {
+            $ujian->update([
+                'kelas_id' => $request->kelas_id,
+                'mata_pelajaran' => $request->mata_pelajaran,
+                'judul_ujian' => $request->judul_ujian,
+                'deskripsi' => $request->deskripsi,
+                'berkas_soal' => $berkasSoalPath,
+                'berkas_kunci_jawaban' => $berkasKunciPath,
+                'total_nilai' => $request->total_nilai,
+                'waktu_mulai' => $request->waktu_mulai,
+                'waktu_selesai' => $request->waktu_selesai,
+                'batas_pengumpulan' => $request->batas_pengumpulan,
+                'instruksi' => $request->instruksi,
+                'status' => $status
+            ]);
 
-        return redirect()->route('guru.penilaian.uts')
-                         ->with('success', 'Ujian Tengah Semester berhasil diperbarui!');
+            // Log keberhasilan update
+            \Log::info('Ujian Tengah Semester berhasil diupdate', [
+                'ujian_id' => $ujian->id,
+                'status' => $status,
+                'action' => $request->action
+            ]);
+
+            $message = 'Ujian Tengah Semester berhasil diperbarui!';
+            if ($status === 'published') {
+                $message .= ' Ujian telah dipublish dan dapat diakses siswa.';
+            } elseif ($status === 'draft') {
+                $message .= ' Ujian disimpan sebagai draft.';
+            }
+
+            return redirect()->route('guru.penilaian.uts.index')
+                            ->with('success', $message);
+
+        } catch (\Exception $e) {
+            \Log::error('Error updating Ujian Tengah Semester: ' . $e->getMessage(), [
+                'ujian_id' => $ujian->id,
+                'error' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()
+                            ->with('error', 'Terjadi kesalahan saat memperbarui Ujian Tengah Semester: ' . $e->getMessage())
+                            ->withInput();
+        }
     }
 
     /**
@@ -440,29 +517,34 @@ class UjianTengahSemesterController extends Controller
             'Soal UTS - ' . $ujian->judul_ujian . '.pdf');
     }
      public function showSoal(string $id)
-{
-    $guruId = auth()->user()->guru->id;
-    $ujian = Ujian::where('id', $id)
-                 ->where('guru_id', $guruId)
-                 ->firstOrFail();
+    {
+        $guruId = auth()->user()->guru->id;
 
-    if (!$ujian->berkas_soal) {
-        return redirect()->back()->with('error', 'Berkas soal tidak ditemukan!');
+        // Ambil ujian dan pastikan milik guru ini serta tipe ujian adalah UTS
+        $ujian = Ujian::where('id', $id)
+                    ->where('guru_id', $guruId)
+                    ->whereHas('tipeUjian', function($q){
+                        $q->where('kode', 'pts'); // Pastikan ini UTS
+                    })
+                    ->firstOrFail();
+
+        // Pastikan file soal ada
+        if (!$ujian->berkas_soal) {
+            return redirect()->back()->with('error', 'Berkas soal UTS tidak ditemukan!');
+        }
+
+        $filePath = storage_path('app/public/' . $ujian->berkas_soal);
+
+        if (!file_exists($filePath)) {
+            return redirect()->back()->with('error', 'File soal UTS tidak ditemukan di server!');
+        }
+
+        // Tampilkan PDF langsung di browser
+        return response()->file($filePath, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Soal UTS - ' . $ujian->judul_ujian . '.pdf"'
+        ]);
     }
-
-    // Ambil file path
-    $filePath = storage_path('app/public/' . $ujian->berkas_soal);
-
-    if (!file_exists($filePath)) {
-        return redirect()->back()->with('error', 'File soal tidak ditemukan di server!');
-    }
-
-    // Tampilkan PDF di browser (inline)
-    return response()->file($filePath, [
-        'Content-Type' => 'application/pdf',
-        'Content-Disposition' => 'inline; filename="Soal UH - ' . $ujian->judul_ujian . '.pdf"'
-    ]);
-}
 
     /**
      * Download berkas kunci jawaban UTS
@@ -546,4 +628,75 @@ $belumKumpul = $totalSiswa - $sudahKumpul;
         'pengumpulanMap'
     ));
 }
+
+    public function showJawaban($ujianId, $pengumpulanId)
+{
+    $guruId = auth()->user()->guru->id;
+    
+    $ujian = Ujian::where('id', $ujianId)
+                 ->where('guru_id', $guruId)
+                 ->firstOrFail();
+
+    $pengumpulan = PengumpulanUjian::where('id', $pengumpulanId)
+                                  ->where('ujian_id', $ujianId)
+                                  ->firstOrFail();
+
+    if (!$pengumpulan->berkas_jawaban) {
+        return redirect()->back()->with('error', 'Berkas jawaban tidak ditemukan!');
+    }
+
+    $filePath = storage_path('app/public/' . $pengumpulan->berkas_jawaban);
+
+    if (!file_exists($filePath)) {
+        return redirect()->back()->with('error', 'File jawaban tidak ditemukan di server!');
+    }
+
+    return response()->file($filePath, [
+        'Content-Type' => 'application/pdf',
+        'Content-Disposition' => 'inline; filename="Jawaban - ' . $pengumpulan->siswa->nama . '.pdf"'
+    ]);
+}
+
+public function updateNilai(Request $request, $ujianId, $pengumpulanId)
+{
+    $guruId = auth()->user()->guru->id;
+
+    // Ambil ujian milik guru ini
+    $ujian = Ujian::where('id', $ujianId)
+                 ->where('guru_id', $guruId)
+                 ->firstOrFail();
+
+    // Pastikan pengumpulan milik ujian ini
+    $pengumpulan = PengumpulanUjian::where('id', $pengumpulanId)
+                                  ->where('ujian_id', $ujianId)
+                                  ->firstOrFail();
+
+    // Tentukan nilai maksimum yang valid (fallback ke total_nilai ujian atau 100)
+    $maxNilai = $request->max_nilai ?? $ujian->total_nilai ?? 100;
+
+    // Validasi input aman
+    $request->validate([
+        'nilai' => [
+            'required',
+            'numeric',
+            'min:0',
+            function ($attribute, $value, $fail) use ($maxNilai) {
+                if ($value > $maxNilai) {
+                    $fail("Nilai tidak boleh melebihi batas maksimum ($maxNilai).");
+                }
+            },
+        ],
+        'catatan_guru' => 'nullable|string|max:500',
+    ]);
+
+    // Update nilai pengumpulan
+    $pengumpulan->update([
+        'nilai' => $request->nilai,
+        'catatan_guru' => $request->catatan_guru,
+        'status' => $request->nilai > 0 ? 'dinilai' : 'dikumpulkan', // otomatis ubah status
+    ]);
+
+    return redirect()->back()->with('success', 'Nilai berhasil diperbarui!');
+}
+
 }

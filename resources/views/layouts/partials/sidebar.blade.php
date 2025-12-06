@@ -87,13 +87,6 @@
                             <p class="mb-0">Kelola Absensi</p>
                         </a>
                     </li>
-                    <li class="nav-item mb-1">
-                        <a href="{{ route('admin.pembayaran.index') }}" 
-                           class="nav-link text-white {{ request()->routeIs('admin.pembayaran.*') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-money-bill-wave"></i>
-                            <p class="mb-0">Kelola Pembayaran</p>
-                        </a>
-                    </li>
                     
                 @elseif(auth()->user()->role == 'guru')
                     <!-- Menu Guru -->

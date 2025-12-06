@@ -96,42 +96,6 @@
                 <div class="card-body">
                     <div class="row align-items-center">
                         <div class="col">
-                            <div class="text-xs fw-semibold text-warning text-uppercase mb-1">Pembayaran Tertunda</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800">
-                                {{ $statistik['pembayaran_tertunda'] }}
-                            </div>
-                            <div class="mt-2">
-                                @if($statistik['pembayaran_tertunda'] > 0)
-                                    <span class="badge bg-warning bg-opacity-10 text-warning">
-                                        Perlu Perhatian
-                                    </span>
-                                @else
-                                    <span class="badge bg-success bg-opacity-10 text-success">
-                                        Semua Lunas
-                                    </span>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <div class="bg-warning bg-opacity-10 rounded-circle p-3">
-                                <i class="fas fa-credit-card fa-2x text-warning"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-transparent border-0 pt-0">
-                    <a href="{{ route('siswa.pembayaran.index') }}" class="text-warning text-decoration-none small">
-                        Cek Status <i class="fas fa-arrow-right ms-1"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-0 shadow-sm h-100 card-hover">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col">
                             <div class="text-xs fw-semibold text-info text-uppercase mb-1">Jadwal Hari Ini</div>
                             <div class="h5 mb-0 fw-bold text-gray-800">
                                 {{ $statistik['jadwal_hari_ini'] }} Mapel
@@ -297,13 +261,6 @@
                                 <i class="fas fa-user-check fa-2x mb-2"></i>
                                 <br>
                                 <span>Absensi</span>
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ route('siswa.pembayaran.index') }}" class="btn btn-outline-warning btn-lg w-100 py-3">
-                                <i class="fas fa-credit-card fa-2x mb-2"></i>
-                                <br>
-                                <span>Pembayaran</span>
                             </a>
                         </div>
                     </div>

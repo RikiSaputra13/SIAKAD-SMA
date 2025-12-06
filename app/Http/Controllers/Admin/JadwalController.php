@@ -76,47 +76,40 @@ public function store(Request $request)
         'jam_selesai' => 'required|after:jam_mulai',
     ]);
 
-    // Cek jadwal bentrok untuk KELAS
+    // Cek bentrok untuk kelas
     $existsKelas = Jadwal::where('kelas_id', $request->kelas_id)
         ->where('hari', $request->hari)
         ->where(function($q) use ($request) {
-            $q->whereBetween('jam_mulai', [$request->jam_mulai, $request->jam_selesai])
-              ->orWhereBetween('jam_selesai', [$request->jam_mulai, $request->jam_selesai])
-              ->orWhere(function($q2) use ($request) {
-                  $q2->where('jam_mulai', '<=', $request->jam_mulai)
-                     ->where('jam_selesai', '>=', $request->jam_selesai);
-              });
+            $q->where('jam_mulai', '<', $request->jam_selesai)
+              ->where('jam_selesai', '>', $request->jam_mulai);
         })
         ->exists();
 
     if ($existsKelas) {
         return back()
-            ->withErrors(['Jadwal sudah tersedia untuk kelas ini pada hari dan jam tersebut!'])
+            ->withErrors(['Kelas ini sudah memiliki jadwal di jam tersebut!'])
             ->withInput();
     }
 
-    // Cek jadwal bentrok untuk GURU
+    // Cek bentrok untuk guru
     $existsGuru = Jadwal::where('guru_id', $request->guru_id)
         ->where('hari', $request->hari)
         ->where(function($q) use ($request) {
-            $q->whereBetween('jam_mulai', [$request->jam_mulai, $request->jam_selesai])
-              ->orWhereBetween('jam_selesai', [$request->jam_mulai, $request->jam_selesai])
-              ->orWhere(function($q2) use ($request) {
-                  $q2->where('jam_mulai', '<=', $request->jam_mulai)
-                     ->where('jam_selesai', '>=', $request->jam_selesai);
-              });
+            $q->where('jam_mulai', '<', $request->jam_selesai)
+              ->where('jam_selesai', '>', $request->jam_mulai);
         })
         ->exists();
 
     if ($existsGuru) {
         return back()
-            ->withErrors(['Guru ini sudah memiliki jadwal mengajar pada hari dan jam tersebut!'])
+            ->withErrors(['Guru ini sudah mengajar di jam tersebut!'])
             ->withInput();
     }
 
     Jadwal::create($request->all());
     return redirect()->route('admin.jadwal.index')->with('success', 'Jadwal berhasil ditambahkan');
 }
+
 
     public function edit(Jadwal $jadwal) {
         $guru = Guru::all();

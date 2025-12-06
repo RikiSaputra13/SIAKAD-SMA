@@ -136,12 +136,6 @@
               <p>Absensi</p>
             </a>
           </li>
-          <li class="nav-item">
-            <a href="{{ url('/pembayaran') }}" class="nav-link">
-              <i class="nav-icon fas fa-money-bill"></i>
-              <p>Pembayaran</p>
-            </a>
-          </li>
         </ul>
       </nav>
     </div>

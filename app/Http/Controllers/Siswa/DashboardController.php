@@ -62,66 +62,38 @@ class DashboardController extends Controller
 
 public function index()
 {
-    $siswa = Auth::user()->siswa->;
-    
-    // Hitung statistik
+    $siswa = Auth::user()->siswa;
+
+    // ✅ Total Jadwal kelas siswa
+    $totalJadwal = Jadwal::where('kelas_id', $siswa->kelas_id)->count();
+
     $bulanIni = Carbon::now()->month;
     $tahunIni = Carbon::now()->year;
-    
-    // Statistik Absensi
+
     $absensiBulanIni = Absensi::where('siswa_id', $siswa->id)
-                            ->whereMonth('tanggal', $bulanIni)
-                            ->whereYear('tanggal', $tahunIni)
-                            ->get();
-    
+                        ->whereMonth('tanggal', $bulanIni)
+                        ->whereYear('tanggal', $tahunIni)
+                        ->get();
+
     $hadirBulan = $absensiBulanIni->where('status', 'Hadir')->count();
-    $totalHariSekolah = 20; // Asumsi 20 hari sekolah per bulan
-    
-    // Statistik Nilai
+    $totalHariSekolah = 20;
+
     $nilai = Penilaian::where('siswa_id', $siswa->id)->get();
     $rataNilai = $nilai->count() > 0 ? number_format($nilai->avg('nilai_akhir'), 1) : 0;
-    
-    // Statistik Pembayaran
+
     $pembayaranTertunda = Pembayaran::where('siswa_id', $siswa->id)
-                                    ->where('status', 'belum_lunas')
-                                    ->count();
-    
-    // Jadwal Hari Ini
+                            ->where('status', 'belum_lunas')
+                            ->count();
+
     $hariIni = Carbon::now()->locale('id')->isoFormat('dddd');
     $jadwalHariIni = Jadwal::where('kelas_id', $siswa->kelas_id)
-                            ->where('hari', $hariIni)
-                            ->orderBy('jam_mulai')
-                            ->get();
-    
-    // Cek jadwal sekarang
+                        ->where('hari', $hariIni)
+                        ->orderBy('jam_mulai')
+                        ->get();
+
     $jamSekarang = Carbon::now()->format('H:i');
-    $jadwalSekarang = $jadwalHariIni->firstWhere('jam_mulai', '<=', $jamSekarang)
-                            ->mata_pelajaran ?? null;
+    $jadwalSekarang = $jadwalHariIni->firstWhere('jam_mulai', '<=', $jamSekarang)->mata_pelajaran ?? null;
 
-    // Data untuk chart (sama seperti sebelumnya)
-    $absensiBulan = Absensi::selectRaw('MONTH(tanggal) as bulan, status, COUNT(*) as total')
-                            ->where('siswa_id', $siswa->id)
-                            ->whereYear('tanggal', $tahunIni)
-                            ->groupBy('bulan','status')
-                            ->get();
-
-    $bulanLabels = collect(range(1,12))->map(function($m){
-        return Carbon::create()->month($m)->isoFormat('MMMM');
-    });
-
-    $statusTypes = ['Hadir','Izin','Sakit','Alpha'];
-    $chartData = [];
-
-    foreach($statusTypes as $status) {
-        $data = [];
-        foreach(range(1,12) as $m) {
-            $count = $absensiBulan->where('bulan', $m)->where('status', $status)->sum('total');
-            $data[] = $count ?? 0;
-        }
-        $chartData[$status] = $data;
-    }
-
-    // Data lainnya
     $absensi = Absensi::where('siswa_id', $siswa->id)->latest()->take(5)->get();
     $pembayaran = Pembayaran::where('siswa_id', $siswa->id)->latest()->take(5)->get();
 
@@ -130,15 +102,16 @@ public function index()
         'persentase_hadir' => $totalHariSekolah > 0 ? round(($hadirBulan / $totalHariSekolah) * 100) : 0,
         'rata_nilai' => $rataNilai,
         'total_mapel' => $nilai->count(),
-        'pembayaran_tertunda' => $pembayaranTertunda,
         'jadwal_hari_ini' => $jadwalHariIni->count(),
     ];
 
     return view('siswa.dashboard', compact(
         'siswa', 'absensi', 'jadwalHariIni', 'pembayaran', 
-        'bulanLabels', 'chartData', 'statistik', 'jadwalSekarang'
+        'statistik', 'jadwalSekarang', 'totalJadwal'
     ));
 }
+
+
 
 // Helper function untuk color status
 private function getStatusColor($status)

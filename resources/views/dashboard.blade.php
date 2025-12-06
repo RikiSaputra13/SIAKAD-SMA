@@ -70,18 +70,5 @@
             <a href="{{ route('admin.absensi.index') }}" class="small-box-footer">Lihat Detail <i class="fas fa-arrow-circle-right"></i></a>
         </div>
     </div>
-    <!-- Pembayaran -->
-    <div class="col-lg-3 col-6">
-        <div class="small-box bg-secondary">
-            <div class="inner">
-                <h3>{{ \App\Models\Pembayaran::count() }}</h3>
-                <p>Pembayaran</p>
-            </div>
-            <div class="icon">
-                <i class="fas fa-credit-card"></i>
-            </div>
-            <a href="{{ route('admin.pembayaran.index') }}" class="small-box-footer">Lihat Detail <i class="fas fa-arrow-circle-right"></i></a>
-        </div>
-    </div>
 </div>
 @endsection

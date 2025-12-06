@@ -100,7 +100,9 @@ public function submit(Request $request, $id)
         ]
     );
 
-    return redirect()->route('ujian-harian.show', $ujian->id)->with('success', 'Jawaban berhasil dikumpulkan!');
+    return redirect()->route('siswa.ujian-harian.show', $ujian->id)
+        ->with('success', 'Jawaban berhasil dikumpulkan!');
 }
+
 
 }
