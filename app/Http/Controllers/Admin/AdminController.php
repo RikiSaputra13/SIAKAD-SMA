@@ -8,7 +8,6 @@ use App\Models\Guru;
 use App\Models\Kelas;
 use App\Models\Jadwal;
 use App\Models\Absensi;
-use App\Models\Pembayaran;
 
 class AdminController extends Controller
 {
@@ -19,7 +18,7 @@ class AdminController extends Controller
         $totalKelas     = Kelas::count();
         $totalJadwal    = Jadwal::count();
         $totalAbsensi   = Absensi::count();
-        $totalPembayaran= Pembayaran::count();
+       
 
         // Data chart: jumlah siswa per kelas
         $kelasLabels     = Kelas::pluck('nama_kelas');
@@ -28,7 +27,7 @@ class AdminController extends Controller
 
         return view('admin.dashboard', compact(
             'totalSiswa', 'totalGuru', 'totalKelas', 'totalJadwal',
-            'totalAbsensi', 'totalPembayaran', 'kelasLabels', 'siswaPerKelas'
+            'totalAbsensi', 'kelasLabels', 'siswaPerKelas'
         ));
     }
 }

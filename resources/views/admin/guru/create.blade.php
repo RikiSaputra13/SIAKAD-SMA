@@ -21,26 +21,44 @@
                 </div>
             @endif
 
-            <form action="{{ route('admin.guru.store') }}" method="POST">
+            <form action="{{ route('admin.guru.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
 
                 <div class="row g-3">
+
                     <div class="col-md-6">
                         <label for="nama" class="form-label">Nama</label>
-                        <input type="text" name="nama" id="nama" class="form-control" 
-                               value="{{ old('nama') }}" required>
+                        <input type="text" name="nama" id="nama" 
+                               class="form-control" value="{{ old('nama') }}" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" name="email" id="email" 
+                               class="form-control" value="{{ old('email') }}" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="password" class="form-label">Password</label>
+                        <div class="input-group">
+                            <input type="password" name="password" id="password" 
+                                   class="form-control" required>
+                            <button type="button" class="input-group-text toggle-password">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="col-md-6">
                         <label for="nip" class="form-label">NIP</label>
-                        <input type="text" name="nip" id="nip" class="form-control" 
-                               value="{{ old('nip') }}">
+                        <input type="text" name="nip" id="nip" 
+                               class="form-control" value="{{ old('nip') }}" required>
                     </div>
 
                     <div class="col-md-6">
                         <label for="mapel" class="form-label">Mata Pelajaran</label>
-                        <input type="text" name="mapel" id="mapel" class="form-control" 
-                               value="{{ old('mapel') }}" required>
+                        <input type="text" name="mapel" id="mapel" 
+                               class="form-control" value="{{ old('mapel') }}" required>
                     </div>
 
                     <div class="col-md-6">
@@ -59,9 +77,20 @@
 
                     <div class="col-md-6">
                         <label for="no_hp" class="form-label">No HP</label>
-                        <input type="text" name="no_hp" id="no_hp" class="form-control" 
-                               value="{{ old('no_hp') }}">
+                        <input type="text" name="no_hp" id="no_hp" 
+                               class="form-control" value="{{ old('no_hp') }}">
                     </div>
+
+                    <div class="col-md-6">
+                        <label for="foto" class="form-label">Foto Profil</label>
+                        <input type="file" name="foto" id="foto" class="form-control" accept="image/jpeg,image/png">
+                        <small class="text-muted">Format: JPG & PNG, Maksimal 2MB</small>
+
+                        <div class="mt-2">
+                            <img id="preview" src="#" style="display:none; max-width:160px; border-radius:5px;">
+                        </div>
+                    </div>
+
                 </div>
 
                 <div class="mt-4 d-flex gap-2">
@@ -74,3 +103,45 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // Toggle show/hide password
+    document.querySelectorAll('.toggle-password').forEach(function(btn) {
+        btn.addEventListener('click', function () {
+            const input = this.parentElement.querySelector('input');
+            const icon = this.querySelector('i');
+            input.type = input.type === 'password' ? 'text' : 'password';
+            icon.classList.toggle('fa-eye');
+            icon.classList.toggle('fa-eye-slash');
+        });
+    });
+
+    // Preview foto
+    const foto = document.getElementById('foto');
+    const preview = document.getElementById('preview');
+
+    foto.addEventListener('change', function () {
+        const file = this.files[0];
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                alert("Ukuran file maksimal 2MB!");
+                this.value = "";
+                preview.style.display = "none";
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = e => {
+                preview.src = e.target.result;
+                preview.style.display = "block";
+            };
+            reader.readAsDataURL(file);
+        } else {
+            preview.style.display = "none";
+        }
+    });
+});
+</script>
+@endpush

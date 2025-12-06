@@ -274,62 +274,108 @@ class UjianAkhirSemesterController extends Controller
     /**
      * Update the specified ujian UAS.
      */
+    /**
+     *
+ * Update the specified ujian UAS.
+ */
+
     public function update(Request $request, string $id)
-    {
-        $user = auth()->user();
-        $guru = $user->guru;
+{
+    $guruId = auth()->user()->guru->id;
+    $ujian = Ujian::where('id', $id)
+                 ->where('guru_id', $guruId)
+                 ->firstOrFail();
 
-        if (!$guru) {
-            return redirect()->back()->with('error', 'Data guru tidak ditemukan untuk akun ini!');
+    // Pastikan ini ujian harian
+    if ($ujian->tipeUjian->kode !== 'pas') {
+        abort(404, 'Ujian bukan Ujian Akhir');
+    }
+
+    // Validasi
+    $request->validate([
+        'judul_ujian' => 'required|string|max:255',
+        'kelas_id' => 'required|exists:kelas,id',
+        'mata_pelajaran' => 'required|string|max:255',
+        'berkas_soal' => 'nullable|file|mimes:pdf|max:10240',
+        'berkas_kunci_jawaban' => 'nullable|file|mimes:pdf|max:10240',
+        'total_nilai' => 'required|integer|min:1|max:100',
+        'waktu_mulai' => 'required|date',
+        'waktu_selesai' => 'required|date|after:waktu_mulai',
+        'batas_pengumpulan' => 'nullable|date|after:waktu_mulai',
+        'instruksi' => 'nullable|string',
+        'deskripsi' => 'nullable|string',
+        // Hapus validasi status karena kita akan menentukannya berdasarkan action
+    ]);
+
+    // Tentukan status berdasarkan action
+    $status = $ujian->status; // Default: tetap status saat ini
+    
+    if ($request->has('action')) {
+        if ($request->action === 'publish') {
+            $status = 'published';
+        } elseif ($request->action === 'draft') {
+            $status = 'draft';
+        } elseif ($request->action === 'update') {
+            $status = 'published'; // atau tetap status sebelumnya
+        }
+    }
+
+    // Handle file upload untuk berkas soal
+    $berkasSoalPath = $ujian->berkas_soal;
+    if ($request->hasFile('berkas_soal')) {
+        $fileSoal = $request->file('berkas_soal');
+        
+        // Validasi file soal
+        if (!$fileSoal->isValid()) {
+            return redirect()->back()->with('error', 'File soal tidak valid!');
         }
 
-        $guruId = $guru->id;
-        $ujian = Ujian::where('id', $id)
-                     ->where('guru_id', $guruId)
-                     ->firstOrFail();
-
-        // Pastikan ini ujian UAS
-        if ($ujian->tipeUjian->kode !== 'pas') {
-            abort(404, 'Ujian bukan Ujian Akhir Semester');
+        // Hapus file lama jika ada
+        if ($ujian->berkas_soal && Storage::disk('public')->exists($ujian->berkas_soal)) {
+            Storage::disk('public')->delete($ujian->berkas_soal);
         }
 
-        $request->validate([
-            'judul_ujian' => 'required|string|max:255',
-            'kelas_id' => 'required|exists:kelas,id',
-            'mata_pelajaran' => 'required|string|max:255',
-            'berkas_soal' => 'nullable|file|mimes:pdf|max:10240',
-            'berkas_kunci_jawaban' => 'nullable|file|mimes:pdf|max:10240',
-            'total_nilai' => 'required|integer|min:1|max:100',
-            'waktu_mulai' => 'required|date',
-            'waktu_selesai' => 'required|date|after:waktu_mulai',
-            'batas_pengumpulan' => 'nullable|date|after:waktu_mulai',
-            'instruksi' => 'nullable|string',
-            'deskripsi' => 'nullable|string',
-            'status' => 'required|in:draft,published,completed'
+        // Simpan file baru
+        $berkasSoalPath = $fileSoal->store('ujian/uas/soal', 'public');
+        
+        // Log untuk debugging
+        \Log::info('Berkas soal UH diupdate', [
+            'ujian_id' => $ujian->id,
+            'file_path' => $berkasSoalPath,
+            'file_size' => $fileSoal->getSize(),
+            'original_name' => $fileSoal->getClientOriginalName()
         ]);
+    }
 
-        // Update berkas soal jika ada
-        if ($request->hasFile('berkas_soal')) {
-            // Hapus file lama
-            if ($ujian->berkas_soal) {
-                Storage::disk('public')->delete($ujian->berkas_soal);
-            }
-            $berkasSoalPath = $request->file('berkas_soal')->store('ujian/uas/soal', 'public');
-        } else {
-            $berkasSoalPath = $ujian->berkas_soal;
+    // Handle file upload untuk berkas kunci jawaban
+    $berkasKunciPath = $ujian->berkas_kunci_jawaban;
+    if ($request->hasFile('berkas_kunci_jawaban')) {
+        $fileKunci = $request->file('berkas_kunci_jawaban');
+        
+        // Validasi file kunci jawaban
+        if (!$fileKunci->isValid()) {
+            return redirect()->back()->with('error', 'File kunci jawaban tidak valid!');
         }
 
-        // Update berkas kunci jawaban jika ada
-        if ($request->hasFile('berkas_kunci_jawaban')) {
-            // Hapus file lama
-            if ($ujian->berkas_kunci_jawaban) {
-                Storage::disk('public')->delete($ujian->berkas_kunci_jawaban);
-            }
-            $berkasKunciPath = $request->file('berkas_kunci_jawaban')->store('ujian/uas/kunci-jawaban', 'public');
-        } else {
-            $berkasKunciPath = $ujian->berkas_kunci_jawaban;
+        // Hapus file lama jika ada
+        if ($ujian->berkas_kunci_jawaban && Storage::disk('public')->exists($ujian->berkas_kunci_jawaban)) {
+            Storage::disk('public')->delete($ujian->berkas_kunci_jawaban);
         }
 
+        // Simpan file baru
+        $berkasKunciPath = $fileKunci->store('ujian/uas/kunci-jawaban', 'public');
+        
+        // Log untuk debugging
+        \Log::info('Berkas kunci jawaban UAS diupdate', [
+            'ujian_id' => $ujian->id,
+            'file_path' => $berkasKunciPath,
+            'file_size' => $fileKunci->getSize(),
+            'original_name' => $fileKunci->getClientOriginalName()
+        ]);
+    }
+
+    // Update data ujian
+    try {
         $ujian->update([
             'kelas_id' => $request->kelas_id,
             'mata_pelajaran' => $request->mata_pelajaran,
@@ -342,12 +388,39 @@ class UjianAkhirSemesterController extends Controller
             'waktu_selesai' => $request->waktu_selesai,
             'batas_pengumpulan' => $request->batas_pengumpulan,
             'instruksi' => $request->instruksi,
-            'status' => $request->status
+            'status' => $status
         ]);
 
-        return redirect()->route('guru.penilaian.uas')
-                         ->with('success', 'Ujian Akhir Semester berhasil diperbarui!');
+        // Log keberhasilan update
+        \Log::info('Ujian Harian berhasil diupdate', [
+            'ujian_id' => $ujian->id,
+            'status' => $status,
+            'action' => $request->action
+        ]);
+
+        $message = 'Ujian Harian berhasil diperbarui!';
+        if ($status === 'published') {
+            $message .= ' Ujian telah dipublish dan dapat diakses siswa.';
+        } elseif ($status === 'draft') {
+            $message .= ' Ujian disimpan sebagai draft.';
+        }
+
+        return redirect()->route('guru.penilaian.uas.index')
+                         ->with('success', $message);
+
+    } catch (\Exception $e) {
+        \Log::error('Error updating Ujian Akhir: ' . $e->getMessage(), [
+            'ujian_id' => $ujian->id,
+            'error' => $e->getTraceAsString()
+        ]);
+
+        return redirect()->back()
+                         ->with('error', 'Terjadi kesalahan saat memperbarui Ujian Harian: ' . $e->getMessage())
+                         ->withInput();
     }
+}
+
+ 
 
     /**
      * Remove the specified ujian UAS.
@@ -450,6 +523,7 @@ class UjianAkhirSemesterController extends Controller
 
         if (!$guru) {
             return redirect()->back()->with('error', 'Data guru tidak ditemukan untuk akun ini!');
+ 
         }
 
         $guruId = $guru->id;
@@ -464,4 +538,29 @@ class UjianAkhirSemesterController extends Controller
         return Storage::disk('public')->download($ujian->berkas_kunci_jawaban, 
             'Kunci Jawaban PAS - ' . $ujian->judul_ujian . '.pdf');
     }
+
+     public function showSoal(string $id)
+{
+    $guruId = auth()->user()->guru->id;
+    $ujian = Ujian::where('id', $id)
+                 ->where('guru_id', $guruId)
+                 ->firstOrFail();
+
+    if (!$ujian->berkas_soal) {
+        return redirect()->back()->with('error', 'Berkas soal tidak ditemukan!');
+    }
+
+    // Ambil file path
+    $filePath = storage_path('app/public/' . $ujian->berkas_soal);
+
+    if (!file_exists($filePath)) {
+        return redirect()->back()->with('error', 'File soal tidak ditemukan di server!');
+    }
+
+    // Tampilkan PDF di browser (inline)
+    return response()->file($filePath, [
+        'Content-Type' => 'application/pdf',
+        'Content-Disposition' => 'inline; filename="Soal UAS - ' . $ujian->judul_ujian . '.pdf"'
+    ]);
+}
 }

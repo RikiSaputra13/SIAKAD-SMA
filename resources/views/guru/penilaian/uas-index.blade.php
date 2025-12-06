@@ -182,6 +182,10 @@
                                                    class="btn btn-sm btn-outline-purple" title="Download Soal">
                                                     <i class="fas fa-download me-1"></i>PDF
                                                 </a>
+                                                <a href="{{ route('guru.penilaian.uas.show.soal', $item->id) }}" 
+                                                   class="btn btn-sm btn-outline-purple" title="Download Soal">
+                                                    <i class="fas fa-eye me-1"></i>Lihat PDF
+                                                </a>
                                             @else
                                                 <span class="badge bg-warning">Tidak ada</span>
                                             @endif
@@ -202,10 +206,10 @@
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group">
-                                                <a href="{{ route('guru.penilaian.uas.show', $item->id) }}" 
-                                                   class="btn btn-info" title="Detail">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
+                                            <a href="{{ route('guru.penilaian.uas.submissions', $item->id) }}"
+                                                        class="btn btn-info" title="Lihat Pengumpulan">
+                                                        <i class="fas fa-list-check"></i>
+                                                    </a>
                                                 <a href="{{ route('guru.penilaian.uas.edit', $item->id) }}" 
                                                    class="btn btn-warning" title="Edit">
                                                     <i class="fas fa-edit"></i>

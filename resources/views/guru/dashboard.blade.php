@@ -109,6 +109,175 @@
         </div>
     </div>
 
+    {{-- MANAJEMEN TOKEN ABSENSI --}}
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm" data-aos="fade-up">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 text-dark fw-bold">
+                            <i class="fas fa-key me-2 text-primary"></i>
+                            Manajemen Token Absensi
+                        </h5>
+                        <span class="badge bg-primary">Real-time</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {{-- Notifikasi --}}
+                    @if(session('success_token'))
+                        <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <div>
+                                    <strong>Berhasil!</strong> {{ session('success_token') }}
+                                    <br>
+                                    <small>
+                                        Token: <strong>{{ session('current_token') }}</strong> | 
+                                        Mapel: {{ session('mapel') }} | 
+                                        Kelas: {{ session('kelas') }} |
+                                        Kadaluarsa: {{ session('token_expired_at') }}
+                                    </small>
+                                </div>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    @if(session('success'))
+                        <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <div>
+                                    <strong>Berhasil!</strong> {{ session('success') }}
+                                </div>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    @if(session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                <div>
+                                    <strong>Error!</strong> {{ session('error') }}
+                                </div>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    <div class="row">
+                        {{-- Form Generate Token --}}
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark mb-3">Buat Token Baru</h6>
+                            <form action="{{ route('guru.generate-token') }}" method="POST">
+                                @csrf
+                                <div class="row g-3">
+                                    {{-- Kelas --}}
+                                    <div class="col-12">
+                                        <label class="form-label">Kelas</label>
+                                        <select name="kelas_id" id="kelas_id" class="form-select" required>
+                                            <option value="">Pilih Kelas</option>
+                                            @foreach($kelasOptions as $kelas)
+                                                <option value="{{ $kelas->id }}">
+                                                    {{ $kelas->nama_kelas }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    {{-- Mata Pelajaran --}}
+                                    <div class="col-12">
+                                        <label class="form-label">Mata Pelajaran</label>
+                                        <select name="mata_pelajaran" id="mata_pelajaran" class="form-select" required>
+                                            <option value="">Pilih Mata Pelajaran</option>
+                                            @foreach($mataPelajaranOptions as $mapel)
+                                                <option value="{{ $mapel }}">{{ $mapel }}</option>
+                                            @endforeach
+                                        </select>
+                                        <small class="text-muted">Pilih kelas terlebih dahulu untuk melihat mata pelajaran yang tersedia</small>
+                                    </div>
+
+                                    {{-- Jam Mulai & Selesai --}}
+                                    <div class="col-md-6">
+                                        <label class="form-label">Jam Mulai</label>
+                                        <input type="time" name="jam_mulai" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Jam Selesai</label>
+                                        <input type="time" name="jam_selesai" class="form-control" required>
+                                    </div>
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-success w-100 py-3">
+                                            <i class="fas fa-key me-2"></i>Buat Token Absensi
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        {{-- Token Aktif --}}
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-dark mb-3">Token Aktif Hari Ini</h6>
+                            @if($activeTokens->count() > 0)
+                                @foreach($activeTokens as $token)
+                                    <div class="card token-card mb-3 border-0 shadow-sm" 
+                                         data-token-id="{{ $token->id }}" 
+                                         data-expired-at="{{ $token->expired_at->timestamp * 1000 }}">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <h5 class="text-primary fw-bold mb-1">{{ $token->token_kode }}</h5>
+                                                    <p class="mb-1">
+                                                        <strong>{{ $token->mata_pelajaran ?? 'Mata Pelajaran' }}</strong> - 
+                                                        {{ $token->kelas->nama_kelas ?? 'Kelas' }}
+                                                    </p>
+                                                    <small class="text-muted">
+                                                        {{ $token->jam_mulai }} - {{ $token->jam_selesai }} | 
+                                                        Kadaluarsa: {{ $token->expired_at->format('H:i') }}
+                                                    </small>
+                                                    <br>
+                                                    <small class="text-success">
+                                                        <i class="fas fa-users me-1"></i>
+                                                        {{ $token->absensi->count() }} siswa sudah absen
+                                                    </small>
+                                                </div>
+                                                <div class="text-end">
+                                                    <span class="badge bg-success">Aktif</span>
+                                                    <div class="mt-2">
+                                                        <small class="text-muted d-block">Sisa Waktu</small>
+                                                        <strong class="text-success" id="countdown-{{ $token->id }}"></strong>
+                                                    </div>
+                                                    {{-- Tombol Hapus --}}
+                                                    <form action="{{ route('guru.delete-token', $token->id) }}" method="POST" class="mt-2">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger btn-delete-token" 
+                                                                onclick="return confirm('Yakin ingin menghapus token {{ $token->token_kode }}?')">
+                                                            <i class="fas fa-trash me-1"></i>Hapus
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            @else
+                                <div class="text-center py-4">
+                                    <i class="fas fa-key fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">Belum ada token aktif</p>
+                                    <small class="text-muted">Buat token baru untuk memulai absensi</small>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Sisanya tetap sama --}}
     <div class="row g-4">
         {{-- Jadwal Mengajar Hari Ini --}}
         <div class="col-lg-8">
@@ -145,7 +314,7 @@
                                                         <i class="fas fa-book text-primary"></i>
                                                     </div>
                                                     <div>
-                                                        <h6 class="mb-0 fw-semibold">{{ $jadwal->mapel }}</h6>
+                                                        <h6 class="mb-0 fw-semibold">{{ $jadwal->mata_pelajaran }}</h6>
                                                         <small class="text-muted">Mata Pelajaran</small>
                                                     </div>
                                                 </div>
@@ -153,7 +322,7 @@
                                             <td>
                                                 <span class="badge bg-light text-dark border">
                                                     <i class="fas fa-school me-1"></i>
-                                                    {{ $jadwal->kelas }}
+                                                    {{ $jadwal->kelas->nama_kelas }}
                                                 </span>
                                             </td>
                                             <td>
@@ -389,6 +558,38 @@
     padding: 0.5em 1em;
 }
 
+/* Token Card Styles */
+.token-card {
+    transition: all 0.3s ease;
+}
+
+.token-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+}
+
+/* Tombol Hapus Styles */
+.btn-delete-token {
+    transition: all 0.3s ease;
+    font-size: 0.8rem;
+}
+
+.btn-delete-token:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+/* Countdown Styles */
+.countdown-warning {
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .card-title {
@@ -457,6 +658,99 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update clock immediately and every second
     updateClock();
     setInterval(updateClock, 1000);
+
+    // Countdown timer untuk token - VERSI DIPERBAIKI
+    function updateCountdowns() {
+        const now = new Date().getTime(); // Current time in milliseconds
+        
+        document.querySelectorAll('[id^="countdown-"]').forEach(element => {
+            const tokenId = element.id.split('-')[1];
+            
+            // Ambil waktu expired dari data attribute
+            const tokenElement = document.querySelector(`[data-token-id="${tokenId}"]`);
+            if (!tokenElement) return;
+            
+            const expiredAt = parseInt(tokenElement.dataset.expiredAt); // Get timestamp from data attribute
+            const diff = expiredAt - now;
+
+            if (diff <= 0) {
+                element.textContent = 'Kadaluarsa';
+                element.className = 'text-danger';
+                
+                // Optional: Auto-refresh halaman setelah 10 detik token expired
+                setTimeout(() => {
+                    window.location.reload();
+                }, 10000);
+            } else {
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                
+                // Format tampilan
+                if (hours > 0) {
+                    element.textContent = `${hours}j ${minutes}m`;
+                } else {
+                    element.textContent = `${minutes}m`;
+                }
+                
+                // Warna berdasarkan sisa waktu
+                if (hours === 0 && minutes < 10) {
+                    element.className = 'text-warning countdown-warning'; // Kuning + animasi jika < 10 menit
+                } else if (hours === 0 && minutes < 30) {
+                    element.className = 'text-danger'; // Merah jika < 30 menit
+                } else {
+                    element.className = 'text-success'; // Hijau jika > 30 menit
+                }
+            }
+        });
+    }
+
+    // Dynamic dropdown untuk mata pelajaran berdasarkan kelas
+    document.getElementById('kelas_id').addEventListener('change', function() {
+        const kelasId = this.value;
+        const mapelSelect = document.getElementById('mata_pelajaran');
+        
+        if (kelasId) {
+            // Kosongkan dulu
+            mapelSelect.innerHTML = '<option value="">Loading...</option>';
+            
+            // Ambil mata pelajaran berdasarkan kelas
+            fetch(`/guru/get-mapel-by-kelas/${kelasId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    mapelSelect.innerHTML = '<option value="">Pilih Mata Pelajaran</option>';
+                    if (data.length > 0) {
+                        data.forEach(mapel => {
+                            mapelSelect.innerHTML += `<option value="${mapel}">${mapel}</option>`;
+                        });
+                    } else {
+                        mapelSelect.innerHTML += '<option value="" disabled>Tidak ada mata pelajaran</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    mapelSelect.innerHTML = '<option value="">Error loading data</option>';
+                    // Fallback ke semua mata pelajaran
+                    @foreach($mataPelajaranOptions as $mapel)
+                        mapelSelect.innerHTML += `<option value="{{ $mapel }}">{{ $mapel }}</option>`;
+                    @endforeach
+                });
+        } else {
+            // Reset ke semua mata pelajaran jika tidak ada kelas yang dipilih
+            mapelSelect.innerHTML = '<option value="">Pilih Mata Pelajaran</option>';
+            @foreach($mataPelajaranOptions as $mapel)
+                mapelSelect.innerHTML += `<option value="{{ $mapel }}">{{ $mapel }}</option>`;
+            @endforeach
+        }
+    });
+
+    // Update countdown setiap 30 detik (lebih responsif)
+    setInterval(updateCountdowns, 30000);
+    updateCountdowns(); // Jalankan pertama kali
 
     // Add hover effects to stats cards
     const statsCards = document.querySelectorAll('.stats-card');

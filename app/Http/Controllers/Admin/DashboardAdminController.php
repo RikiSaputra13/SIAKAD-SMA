@@ -9,7 +9,7 @@ use App\Models\Siswa;
 use App\Models\Kelas;
 use App\Models\Jadwal;
 use App\Models\Absensi;
-use App\Models\Pembayaran;
+
 
 class DashboardAdminController extends Controller
 {
@@ -20,11 +20,11 @@ class DashboardAdminController extends Controller
         $totalKelas = Kelas::count();
         $totalJadwal = Jadwal::count();
         $totalAbsensi = Absensi::count();
-        $totalPembayaran = Pembayaran::count();
+        
 
         return view('admin.dashboard', compact(
             'totalSiswa','totalGuru','totalKelas',
-            'totalJadwal','totalAbsensi','totalPembayaran'
+            'totalJadwal','totalAbsensi'
         ));
     }
 

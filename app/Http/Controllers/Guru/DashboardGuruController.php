@@ -9,7 +9,11 @@ use App\Models\Jadwal;
 use App\Models\Siswa;
 use App\Models\Absensi;
 use App\Models\Guru;
+use App\Models\Token;
+use App\Models\Mapel;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class DashboardGuruController extends Controller
 {
@@ -27,23 +31,23 @@ class DashboardGuruController extends Controller
 
         $guruId = $guru->id;
 
-        // Total kelas yang diampu guru (sebagai wali kelas)
-        $totalKelasDiampu = Kelas::where('wali_kelas_id', $guruId)->count();
+        // PERBAIKAN: Total kelas yang diampu guru (baik sebagai wali kelas maupun yang mengajar)
+        $kelasIdsFromJadwal = Jadwal::where('guru_id', $guruId)->pluck('kelas_id')->unique();
+        $totalKelasDiampu = $kelasIdsFromJadwal->count();
 
         // Total jadwal mengajar guru
         $totalJadwalMengajar = Jadwal::where('guru_id', $guruId)->count();
 
-        // Total siswa di semua kelas yang diampu guru sebagai wali kelas
-        $kelasIds = Kelas::where('wali_kelas_id', $guruId)->pluck('id');
-        $totalSiswa = Siswa::whereIn('kelas_id', $kelasIds)->count();
+        // PERBAIKAN: Total siswa di semua kelas yang diajar guru
+        $totalSiswa = Siswa::whereIn('kelas_id', $kelasIdsFromJadwal)->count();
 
         // Total absensi hari ini yang diinput guru
         $today = now()->toDateString();
         $totalAbsensiHariIni = Absensi::whereDate('tanggal', $today)
-            ->whereIn('siswa_id', function($query) use ($kelasIds) {
+            ->whereIn('siswa_id', function($query) use ($kelasIdsFromJadwal) {
                 $query->select('id')
                       ->from('siswas')
-                      ->whereIn('kelas_id', $kelasIds);
+                      ->whereIn('kelas_id', $kelasIdsFromJadwal);
             })
             ->count();
 
@@ -53,23 +57,160 @@ class DashboardGuruController extends Controller
             ->where('guru_id', $guruId)
             ->where('hari', $hariIni)
             ->orderBy('jam_mulai')
-            ->get()
-            ->map(function($jadwal) {
-                return (object)[
-                    'mapel' => $jadwal->mata_pelajaran,
-                    'kelas' => $jadwal->kelas->nama_kelas,
-                    'jam_mulai' => $jadwal->jam_mulai,
-                    'jam_selesai' => $jadwal->jam_selesai
-                ];
-            });
+            ->get();
+
+        // Token aktif hari ini
+        $activeTokens = Token::with(['kelas', 'absensi'])
+            ->where('guru_id', $guruId)
+            ->whereDate('attendance_date', today())
+            ->where('expired_at', '>', now())
+            ->where('is_used', false)
+            ->get();
+
+        // PERBAIKAN: Ambil data untuk dropdown mata pelajaran dan kelas
+        $mataPelajaranOptions = Jadwal::where('guru_id', $guruId)
+            ->distinct()
+            ->pluck('mata_pelajaran')
+            ->filter()
+            ->values();
+
+        $kelasOptions = Kelas::whereIn('id', $kelasIdsFromJadwal)->get();
 
         return view('guru.dashboard', compact(
             'totalKelasDiampu',
             'totalJadwalMengajar',
             'totalSiswa',
             'totalAbsensiHariIni',
-            'jadwalHariIni'
+            'jadwalHariIni',
+            'activeTokens',
+            'guru',
+            'mataPelajaranOptions', // PERBAIKAN: Kirim data mata pelajaran
+            'kelasOptions' // PERBAIKAN: Kirim data kelas
         ));
+    }
+
+    /**
+     * Generate token absensi untuk guru - VERSI DIPERBAIKI
+     */
+    public function generateToken(Request $request)
+    {
+        $request->validate([
+            'mata_pelajaran' => 'required|string',
+            'kelas_id' => 'required|exists:kelas,id',
+            'jam_mulai' => 'required',
+            'jam_selesai' => 'required'
+        ]);
+
+        $user = Auth::user();
+        $guru = Guru::where('user_id', $user->id)->first();
+
+        if (!$guru) {
+            return redirect()->back()->with('error', 'Data guru tidak ditemukan.');
+        }
+
+        // PERBAIKAN: Validasi lebih longgar untuk pengecekan jadwal
+        $jadwal = Jadwal::where('guru_id', $guru->id)
+                        ->where('mata_pelajaran', $request->mata_pelajaran)
+                        ->where('kelas_id', $request->kelas_id)
+                        ->first();
+
+        // Jika tidak ditemukan jadwal spesifik, tetap izinkan buat token
+        // dengan catatan guru mengajar di kelas tersebut
+        $guruMengajarDiKelas = Jadwal::where('guru_id', $guru->id)
+                                    ->where('kelas_id', $request->kelas_id)
+                                    ->exists();
+
+        if (!$guruMengajarDiKelas) {
+            return back()->with('error', 'Anda tidak mengajar di kelas tersebut!');
+        }
+
+        // Generate token baru
+        $token = Str::upper(Str::random(6));
+        $expiredAt = Carbon::now()->addHours(1);
+
+        // PERBAIKAN: Hapus field yang tidak ada di tabel
+        $tokenRecord = Token::create([
+            'guru_id' => $guru->id,
+            'kelas_id' => $request->kelas_id,
+            'mata_pelajaran' => $request->mata_pelajaran,
+            'token_kode' => $token,
+            'expired_at' => $expiredAt,
+            'attendance_date' => today(),
+            'jam_mulai' => $request->jam_mulai,
+            'jam_selesai' => $request->jam_selesai,
+            'is_used' => false
+        ]);
+
+        return redirect()->route('guru.dashboard')
+            ->with('success_token', 'Token absensi berhasil dibuat!')
+            ->with('current_token', $token)
+            ->with('token_expired_at', $expiredAt->format('H:i:s'))
+            ->with('mapel', $request->mata_pelajaran)
+            ->with('kelas', $tokenRecord->kelas->nama_kelas ?? 'Kelas');
+    }
+
+    /**
+     * Hapus token absensi
+     */
+    public function deleteToken($id)
+    {
+        try {
+            $user = Auth::user();
+            $guru = Guru::where('user_id', $user->id)->first();
+
+            if (!$guru) {
+                return redirect()->back()->with('error', 'Data guru tidak ditemukan.');
+            }
+
+            $token = Token::where('id', $id)
+                        ->where('guru_id', $guru->id)
+                        ->first();
+
+            if (!$token) {
+                return redirect()->back()->with('error', 'Token tidak ditemukan atau tidak memiliki akses.');
+            }
+
+            $token->delete();
+
+            return redirect()->back()->with('success', 'Token berhasil dihapus.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat menghapus token: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get active tokens for AJAX request - VERSI DIPERBAIKI
+     */
+    public function getActiveTokens()
+    {
+        $user = Auth::user();
+        $guru = Guru::where('user_id', $user->id)->first();
+
+        if (!$guru) {
+            return response()->json([]);
+        }
+
+        $tokens = Token::with(['kelas', 'absensi'])
+                    ->where('guru_id', $guru->id)
+                    ->whereDate('attendance_date', today())
+                    ->where('expired_at', '>', now())
+                    ->where('is_used', false)
+                    ->get()
+                    ->map(function($token) {
+                        return [
+                            'id' => $token->id,
+                            'token' => $token->token_kode,
+                            'mapel' => $token->mata_pelajaran ?? 'Mata Pelajaran', // PERBAIKAN: Ambil dari field yang disimpan
+                            'kelas' => $token->kelas->nama_kelas ?? 'Kelas',
+                            'jam_mulai' => $token->jam_mulai,
+                            'jam_selesai' => $token->jam_selesai,
+                            'expired_at' => $token->expired_at->format('H:i:s'),
+                            'absensi_count' => $token->absensi->count()
+                        ];
+                    });
+
+        return response()->json($tokens);
     }
 
     /**
@@ -90,9 +231,29 @@ class DashboardGuruController extends Controller
         return $hariMap[$hariEnglish] ?? $hariEnglish;
     }
 
+    /**
+     * Get mata pelajaran by kelas - UNTUK AJAX
+     */
+    public function getMapelByKelas($kelasId)
+    {
+        $user = Auth::user();
+        $guru = Guru::where('user_id', $user->id)->first();
 
+        if (!$guru) {
+            return response()->json([]);
+        }
 
-       public function jadwalGuru(Request $request) 
+        $mataPelajaran = Jadwal::where('guru_id', $guru->id)
+                            ->where('kelas_id', $kelasId)
+                            ->distinct()
+                            ->pluck('mata_pelajaran')
+                            ->filter()
+                            ->values();
+
+        return response()->json($mataPelajaran);
+    }
+
+    public function jadwalGuru(Request $request) 
     {
         // Ambil guru yang sedang login
         $user = auth()->user();
@@ -133,5 +294,20 @@ class DashboardGuruController extends Controller
         $hariIni = $this->getHariIndonesia(now()->format('l'));
         
         return view('guru.jadwal.index', compact('jadwals', 'kelas', 'hariIni'));
+    }
+
+    /**
+     * Profile guru
+     */
+    public function profile()
+    {
+        $user = Auth::user();
+        $guru = Guru::where('user_id', $user->id)->first();
+        
+        if (!$guru) {
+            return redirect()->back()->with('error', 'Data guru tidak ditemukan.');
+        }
+
+        return view('guru.profile', compact('guru'));
     }
 }

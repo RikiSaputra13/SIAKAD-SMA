@@ -12,35 +12,56 @@
         <div class="card-body">
             <a href="{{ route('admin.siswa.create') }}" class="btn btn-success mb-3">Tambah</a>
 
+            {{-- FILTER KELAS --}}
+            <form action="{{ route('admin.siswa.index') }}" method="GET" class="mb-3">
+                <div class="row">
+                    <div class="col-md-4">
+                        <select name="kelas_id" class="form-control" onchange="this.form.submit()">
+                            <option value="">-- Semua Kelas --</option>
+                            @foreach ($kelas as $k)
+                                <option value="{{ $k->id }}" {{ (isset($kelas_id) && $kelas_id == $k->id) ? 'selected' : '' }}>
+                                    {{ $k->nama_kelas }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @if(isset($kelas_id) && $kelas_id != "")
+                        <div class="col-md-2">
+                            <a href="{{ route('admin.siswa.index') }}" class="btn btn-secondary">Reset</a>
+                        </div>
+                    @endif
+                </div>
+            </form>
+
             @if(session('success'))
                 <div class="alert alert-success">
                     {{ session('success') }}
                 </div>
             @endif
+
             <div class="table-responsive">
-                <table class="table table-bordered table-hover">
+                <table class="table table-bordered table-hover text-center">
                     <thead class="bg-light">
                         <tr>
-                            <th scope="col">No</th>
-                            <th scope="col">Nama</th>
-                            <th scope="col">NIS</th>
-                            <th scope="col">Kelas</th>
-                            <th scope="col">Alamat</th>
-                            <th scope="col">Telepon Orang Tua</th>
-                            <th scope="col">Email</th>
-                            <th scope="col">Jenis Kelamin</th>
-                            <th scope="col">Tempat Lahir</th>
-                            <th scope="col">Tanggal Lahir</th>
-                            <th scope="col">Aksi</th>
+                            <th>No</th>
+                            <th>Nama</th>
+                            <th>NIS</th>
+                            <th>Kelas</th>
+                            <th>Alamat</th>
+                            <th>Telepon Orang Tua</th>
+                            <th>Email</th>
+                            <th>Jenis Kelamin</th>
+                            <th>Tempat Lahir</th>
+                            <th>Tanggal Lahir</th>
+                            <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($siswas as $siswa)
                             <tr>
-                                <th scope="row">{{ $loop->iteration }}</th>
+                                <td>{{ $loop->iteration }}</td>
                                 <td>{{ $siswa->nama }}</td>
                                 <td>{{ $siswa->nis }}</td>
-                                {{-- KODE INI YANG DIPERBAIKI --}}
                                 <td>{{ optional($siswa->kelas)->nama_kelas }}</td>
                                 <td>{{ $siswa->alamat }}</td>
                                 <td>{{ $siswa->tlp_orang_tua }}</td>
@@ -59,12 +80,13 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="11" class="text-center">Belum ada data siswa.</td>
+                                <td colspan="11" class="text-center text-muted">Belum ada data siswa.</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
+
         </div>
     </div>
 </div>

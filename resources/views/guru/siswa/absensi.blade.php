@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Daftar Absensi')
+@section('title', 'Daftar Absensi - Guru')
 
 @section('content')
 <div class="container-fluid py-4">
@@ -10,15 +10,15 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h1 class="h3 mb-2 text-dark fw-bold">Data Absensi Siswa</h1>
-                    <p class="text-muted mb-0">Manajemen dan monitoring kehadiran siswa</p>
+                    <p class="text-muted mb-0">Manajemen dan monitoring kehadiran siswa di kelas yang Anda ajar</p>
                 </div>
                 <div class="d-flex gap-2">
                     <button class="btn btn-outline-primary" id="btnLihatRekap">
                         <i class="fas fa-chart-bar me-2"></i>Rekap Absensi
                     </button>
-                    <button class="btn btn-primary">
+                    <a href="{{ route('guru.absensi.create') }}" class="btn btn-primary">
                         <i class="fas fa-plus me-2"></i>Tambah Absensi
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>
@@ -33,7 +33,7 @@
                         <div class="col">
                             <div class="text-xs fw-semibold text-success text-uppercase mb-1">
                                 Total Hadir</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800" id="statsHadir">0</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">{{ $stats['Hadir'] ?? 0 }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-user-check fa-2x text-success opacity-50"></i>
@@ -50,7 +50,7 @@
                         <div class="col">
                             <div class="text-xs fw-semibold text-warning text-uppercase mb-1">
                                 Total Sakit</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800" id="statsSakit">0</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">{{ $stats['Sakit'] ?? 0 }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-procedures fa-2x text-warning opacity-50"></i>
@@ -67,7 +67,7 @@
                         <div class="col">
                             <div class="text-xs fw-semibold text-info text-uppercase mb-1">
                                 Total Izin</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800" id="statsIzin">0</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">{{ $stats['Izin'] ?? 0 }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-envelope fa-2x text-info opacity-50"></i>
@@ -84,7 +84,7 @@
                         <div class="col">
                             <div class="text-xs fw-semibold text-danger text-uppercase mb-1">
                                 Total Alpha</div>
-                            <div class="h5 mb-0 fw-bold text-gray-800" id="statsAlpha">0</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">{{ $stats['Alpha'] ?? 0 }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-user-times fa-2x text-danger opacity-50"></i>
@@ -104,27 +104,63 @@
                 </h5>
                 <div class="d-flex gap-2">
                     <!-- Search Box -->
-                    <div class="input-group input-group-sm" style="width: 250px;">
-                        <input type="text" class="form-control border-secondary-subtle" placeholder="Cari siswa...">
-                        <button class="btn btn-outline-secondary" type="button">
-                            <i class="fas fa-search"></i>
-                        </button>
-                    </div>
-                    
-                    <!-- Filter Button -->
-                    <div class="dropdown">
-                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-filter me-1"></i>Filter
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#">Semua Status</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#">Hadir</a></li>
-                            <li><a class="dropdown-item" href="#">Sakit</a></li>
-                            <li><a class="dropdown-item" href="#">Izin</a></li>
-                            <li><a class="dropdown-item" href="#">Alpha</a></li>
-                        </ul>
-                    </div>
+                    <form method="GET" action="{{ route('guru.absensi.index') }}" class="d-flex gap-2">
+                        <!-- Filter Tanggal -->
+                        <div class="input-group input-group-sm" style="width: 180px;">
+                            <span class="input-group-text bg-light border-secondary-subtle">
+                                <i class="fas fa-calendar-alt"></i>
+                            </span>
+                            <input type="date" class="form-control border-secondary-subtle" 
+                                   name="dari_tanggal" value="{{ request('dari_tanggal') }}">
+                        </div>
+                        
+                        <div class="input-group input-group-sm" style="width: 180px;">
+                            <span class="input-group-text bg-light border-secondary-subtle">
+                                <i class="fas fa-calendar-alt"></i>
+                            </span>
+                            <input type="date" class="form-control border-secondary-subtle" 
+                                   name="sampai_tanggal" value="{{ request('sampai_tanggal') }}">
+                        </div>
+                        
+                        <!-- Filter Kelas -->
+                        @if($kelas->count() > 0)
+                        <select class="form-select form-select-sm" name="kelas_id" style="width: 150px;">
+                            <option value="">Semua Kelas</option>
+                            @foreach($kelas as $kelasItem)
+                                <option value="{{ $kelasItem->id }}" 
+                                    {{ request('kelas_id') == $kelasItem->id ? 'selected' : '' }}>
+                                    {{ $kelasItem->nama_kelas }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @endif
+                        
+                        <!-- Search Nama/NIS -->
+                        <div class="input-group input-group-sm" style="width: 250px;">
+                            <input type="text" class="form-control border-secondary-subtle" 
+                                   name="search" placeholder="Cari siswa/NIS..." 
+                                   value="{{ request('search') }}">
+                            <button class="btn btn-outline-secondary" type="submit">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Filter Status -->
+                        <select class="form-select form-select-sm" name="status" style="width: 130px;">
+                            <option value="">Semua Status</option>
+                            <option value="Hadir" {{ request('status') == 'Hadir' ? 'selected' : '' }}>Hadir</option>
+                            <option value="Sakit" {{ request('status') == 'Sakit' ? 'selected' : '' }}>Sakit</option>
+                            <option value="Izin" {{ request('status') == 'Izin' ? 'selected' : '' }}>Izin</option>
+                            <option value="Alpha" {{ request('status') == 'Alpha' ? 'selected' : '' }}>Alpha</option>
+                        </select>
+                        
+                        <!-- Reset Filter -->
+                        @if(request()->anyFilled(['dari_tanggal', 'sampai_tanggal', 'kelas_id', 'search', 'status']))
+                        <a href="{{ route('guru.absensi.index') }}" class="btn btn-outline-danger btn-sm">
+                            <i class="fas fa-times"></i>
+                        </a>
+                        @endif
+                    </form>
                 </div>
             </div>
         </div>
@@ -162,7 +198,7 @@
                             <th class="border-0">Tanggal</th>
                             <th class="border-0">Status</th>
                             <th class="border-0">Keterangan</th>
-                            <th class="border-0 text-center pe-4" style="width: 120px;">Aksi</th>
+                            <th class="border-0 text-center" style="width: 100px;">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -216,21 +252,19 @@
                                         {{ $absensi->keterangan_izin ?? '-' }}
                                     </span>
                                 </td>
-                                <td class="text-center pe-4">
+                                <td class="text-center">
                                     <div class="btn-group btn-group-sm">
-                                        <a href="{{ route('admin.absensi.edit', $absensi->id) }}" 
-                                           class="btn btn-outline-primary border-secondary-subtle" 
-                                           title="Edit" data-bs-toggle="tooltip">
+                                        <a href="{{ route('guru.absensi.edit', $absensi) }}" 
+                                           class="btn btn-warning" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <form action="{{ route('admin.absensi.destroy', $absensi->id) }}" 
+                                        <form action="{{ route('guru.absensi.destroy', $absensi) }}" 
                                               method="POST" class="d-inline">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" 
-                                                    class="btn btn-outline-danger border-secondary-subtle" 
-                                                    onclick="return confirm('Yakin hapus absensi ini?')"
-                                                    title="Hapus" data-bs-toggle="tooltip">
+                                            <button type="submit" class="btn btn-danger" 
+                                                    onclick="return confirm('Hapus absensi ini?')"
+                                                    title="Hapus">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
@@ -244,6 +278,9 @@
                                         <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
                                         <h5 class="text-muted">Belum ada data absensi</h5>
                                         <p class="text-muted mb-0">Mulai dengan menambahkan absensi baru</p>
+                                        <a href="{{ route('guru.absensi.create') }}" class="btn btn-primary mt-3">
+                                            <i class="fas fa-plus me-2"></i>Tambah Absensi
+                                        </a>
                                     </div>
                                 </td>
                             </tr>
@@ -257,10 +294,9 @@
             <div class="card-footer bg-transparent border-0 py-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="text-muted small">
-                        Menampilkan {{ $absensis->count() }} data absensi
+                        Menampilkan {{ $absensis->firstItem() ?? 0 }} - {{ $absensis->lastItem() ?? 0 }} dari {{ $absensis->total() }} data
                     </div>
-                    <!-- Add pagination links if needed -->
-                    {{ $absensis->links() }}
+                    {{ $absensis->withQueryString()->links() }}
                 </div>
             </div>
             @endif
@@ -305,16 +341,6 @@
                     </div>
                 </div>
 
-                <!-- Export Buttons -->
-                <div class="d-flex gap-2 mb-4">
-                    <button class="btn btn-success" id="btnCetakPdf">
-                        <i class="fas fa-file-pdf me-2"></i>Cetak PDF
-                    </button>
-                    <button class="btn btn-success" id="btnCetakExcel">
-                        <i class="fas fa-file-excel me-2"></i>Cetak Excel
-                    </button>
-                </div>
-
                 <!-- Rekap Table -->
                 <div class="table-responsive">
                     <table class="table table-bordered table-hover" id="rekapTable">
@@ -323,6 +349,7 @@
                                 <th class="text-center">No</th>
                                 <th>NIS</th>
                                 <th>Nama Siswa</th>
+                                <th>Kelas</th>
                                 <th class="text-center">Hadir</th>
                                 <th class="text-center">Sakit</th>
                                 <th class="text-center">Izin</th>
@@ -332,14 +359,14 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="8" class="text-center py-4 text-muted">
+                                <td colspan="9" class="text-center py-4 text-muted">
                                     <i class="fas fa-search me-2"></i>Gunakan filter untuk menampilkan data
                                 </td>
                             </tr>
                         </tbody>
                         <tfoot class="bg-light fw-semibold">
                             <tr>
-                                <th colspan="3" class="text-end">Total Keseluruhan</th>
+                                <th colspan="4" class="text-end">Total Keseluruhan</th>
                                 <th class="text-center" id="totalHadir">0</th>
                                 <th class="text-center" id="totalSakit">0</th>
                                 <th class="text-center" id="totalIzin">0</th>
@@ -349,6 +376,9 @@
                         </tfoot>
                     </table>
                 </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
     </div>
@@ -403,11 +433,6 @@
     opacity: 0.7;
 }
 
-.btn-group .btn {
-    border-radius: 0.375rem;
-    margin: 0 1px;
-}
-
 /* Badge Styles */
 .badge {
     font-weight: 500;
@@ -443,10 +468,6 @@
     .input-group {
         width: 100% !important;
     }
-    
-    .btn-group .btn {
-        padding: 0.25rem 0.5rem;
-    }
 }
 
 /* Loading Animation */
@@ -470,36 +491,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 
-    // Calculate and update statistics
-    function updateStatistics() {
-        const stats = {
-            Hadir: document.querySelectorAll('.badge.bg-success').length,
-            Sakit: document.querySelectorAll('.badge.bg-warning').length,
-            Izin: document.querySelectorAll('.badge.bg-info').length,
-            Alpha: document.querySelectorAll('.badge.bg-danger').length
-        };
-
-        document.getElementById('statsHadir').textContent = stats.Hadir;
-        document.getElementById('statsSakit').textContent = stats.Sakit;
-        document.getElementById('statsIzin').textContent = stats.Izin;
-        document.getElementById('statsAlpha').textContent = stats.Alpha;
-    }
-
-    // Update statistics on page load
-    updateStatistics();
-
     // Modal functionality
     const rekapModal = new bootstrap.Modal(document.getElementById('rekapModal'));
     const btnLihatRekap = document.getElementById('btnLihatRekap');
     const btnFilter = document.getElementById('btnFilter');
-    const btnCetakPdf = document.getElementById('btnCetakPdf');
-    const btnCetakExcel = document.getElementById('btnCetakExcel');
     const rekapTableBody = document.querySelector('#rekapTable tbody');
 
+    // Function to fetch rekap data
     function fetchRekap(start = '', end = '', kelas_id = '') {
         rekapTableBody.innerHTML = `
             <tr>
-                <td colspan="8" class="text-center py-4">
+                <td colspan="9" class="text-center py-4">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
@@ -508,8 +510,11 @@ document.addEventListener('DOMContentLoaded', function() {
             </tr>
         `;
 
-        fetch(`{{ route('admin.absensi.rekap') }}?start_date=${start}&end_date=${end}&kelas_id=${kelas_id}`, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        fetch(`{{ route('guru.absensi.rekap') }}?start_date=${start}&end_date=${end}&kelas_id=${kelas_id}`, {
+            headers: { 
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
             credentials: 'same-origin'
         })
         .then(res => res.json())
@@ -522,7 +527,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if(res.rekap.length === 0){
                     rekapTableBody.innerHTML = `
                         <tr>
-                            <td colspan="8" class="text-center py-4 text-muted">
+                            <td colspan="9" class="text-center py-4 text-muted">
                                 <i class="fas fa-inbox me-2"></i>Tidak ada data untuk filter yang dipilih
                             </td>
                         </tr>
@@ -542,6 +547,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td class="text-center">${i++}</td>
                             <td>${item.nis}</td>
                             <td>${item.nama_siswa}</td>
+                            <td>${item.kelas}</td>
                             <td class="text-center">${item.Hadir}</td>
                             <td class="text-center">${item.Sakit}</td>
                             <td class="text-center">${item.Izin}</td>
@@ -559,7 +565,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 rekapTableBody.innerHTML = `
                     <tr>
-                        <td colspan="8" class="text-center py-4 text-danger">
+                        <td colspan="9" class="text-center py-4 text-danger">
                             <i class="fas fa-exclamation-triangle me-2"></i>Gagal memuat data
                         </td>
                     </tr>
@@ -570,7 +576,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error(err);
             rekapTableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="text-center py-4 text-danger">
+                    <td colspan="9" class="text-center py-4 text-danger">
                         <i class="fas fa-exclamation-circle me-2"></i>Terjadi kesalahan server
                     </td>
                 </tr>
@@ -578,6 +584,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Event listeners
     btnLihatRekap.addEventListener('click', () => {
         rekapModal.show();
         // Set default dates
@@ -595,18 +602,29 @@ document.addEventListener('DOMContentLoaded', function() {
         fetchRekap(start, end, kelas_id);
     });
 
-    btnCetakPdf.addEventListener('click', () => {
-        const start = document.getElementById('start_date').value;
-        const end = document.getElementById('end_date').value;
-        const kelas_id = document.getElementById('kelas_id').value;
-        window.open(`{{ route('admin.absensi.rekap.cetak') }}?start_date=${start}&end_date=${end}&kelas_id=${kelas_id}`, '_blank');
-    });
-
-    btnCetakExcel.addEventListener('click', () => {
-        const start = document.getElementById('start_date').value;
-        const end = document.getElementById('end_date').value;
-        const kelas_id = document.getElementById('kelas_id').value;
-        window.location.href = `{{ route('admin.absensi.export-excel') }}?start_date=${start}&end_date=${end}&kelas_id=${kelas_id}`;
+    // Set default date values for filter
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+        
+        // Set default for rekap modal
+        if (document.getElementById('start_date') && !document.getElementById('start_date').value) {
+            document.getElementById('start_date').value = firstDay;
+        }
+        if (document.getElementById('end_date') && !document.getElementById('end_date').value) {
+            document.getElementById('end_date').value = today;
+        }
+        
+        // Set default for main filter
+        const dariTanggal = document.querySelector('input[name="dari_tanggal"]');
+        const sampaiTanggal = document.querySelector('input[name="sampai_tanggal"]');
+        
+        if (dariTanggal && !dariTanggal.value) {
+            dariTanggal.value = firstDay;
+        }
+        if (sampaiTanggal && !sampaiTanggal.value) {
+            sampaiTanggal.value = today;
+        }
     });
 });
 </script>

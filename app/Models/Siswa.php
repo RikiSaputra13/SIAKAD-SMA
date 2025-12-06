@@ -28,6 +28,12 @@ class Siswa extends Model
         return $this->belongsTo(User::class);
     }
 
+    // TAMBAHKAN RELASI INI: Relasi ke Absensi (satu siswa banyak absensi)
+    public function absensis()
+    {
+        return $this->hasMany(Absensi::class, 'siswa_id');
+    }
+
     // Relasi ke Kelas
     public function kelas()
     {

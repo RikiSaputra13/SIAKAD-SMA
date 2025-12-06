@@ -21,10 +21,27 @@ class Jadwal extends Model
     }
 
     /**
+     * Get the mapel that owns the Jadwal.
+     */
+    public function mapel()
+    {
+        return $this->belongsTo(Mapel::class);
+    }
+
+    /**
      * Get the kelas that owns the Jadwal.
      */
     public function kelas()
     {
         return $this->belongsTo(Kelas::class);
+    }
+
+    /**
+     * Accessor untuk mendapatkan nama mata pelajaran
+     * Jika ada relasi mapel, gunakan nama mapel, else gunakan mata_pelajaran
+     */
+    public function getNamaMapelAttribute()
+    {
+        return $this->mapel ? $this->mapel->nama : $this->mata_pelajaran;
     }
 }
